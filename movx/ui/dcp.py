@@ -45,6 +45,7 @@ def dcp_parse(q):
     if dcp:
         dcp.parse()
         print(dcp.metadata)
+    q.page.save()
 
 def dcp_infos_card(q: Q, dcp):
     infos = one_level_dict(dcp.metadata)

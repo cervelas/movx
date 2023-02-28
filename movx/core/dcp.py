@@ -65,6 +65,7 @@ class DCP:
             "metadata": json.dumps(self.metadata),
             "report": json.dumps(self.report),
             "ov_path": str(self.ov_path),
+            "size": self.size,
             "uid": str(self.uid),
         }
 
@@ -77,4 +78,5 @@ class DCP:
         dcp.metadata = json.loads(dic["metadata"])
         dcp.report = json.loads(dic["report"])
         dcp.ov_path = dic["ov_path"]
+        dcp.size = dic["size"]
         return dcp

@@ -25,11 +25,11 @@ for dcp in dcps:
 
 def make_flat_dcps_table(dcps):
     columns = [
-        ui.table_column(name='Movie', label='Movie', searchable=True, filterable=True, min_width="150px", link=False),
+        ui.table_column(name='Movie', label='Movie', searchable=True, filterable=True, min_width="250px", link=False),
         ui.table_column(name='Title', label='Title', searchable=True, filterable=True, min_width="500px"),
-        ui.table_column(name='Location', label='Location', filterable=True,  max_width="50px" ),
-        ui.table_column(name='Type', label='Type', filterable=True),
-        ui.table_column(name='Size', label='Size'),
+        ui.table_column(name='Location', label='Location', filterable=True,  max_width="80px" ),
+        ui.table_column(name='Type', label='Type', filterable=True, max_width="70px"),
+        ui.table_column(name='Size', label='Size', max_width="80px"),
         ui.table_column(name='Status', label='Status', filterable=True),
         ui.table_column(name='Check', label='Check', filterable=True, cell_type=ui.icon_table_cell_type()),
         ui.table_column(name='Path', label='Path'),

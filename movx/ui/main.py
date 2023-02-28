@@ -28,6 +28,9 @@ async def display_homepage(q: Q):
 
     breadcrumbs(q)
 
+    if q.user.show_loc:
+        locations.show_locs_list(q)
+
     dcps = movx.dcps
 
     q.page['full_dcp_list'] = ui.form_card(box='content',
@@ -73,10 +76,11 @@ async def serve(q: Q):
         await dcp_check(q)
         movx.save()
 
-    await handle_on(q)
-
     if q.args['#'] is None:
         await display_homepage(q)
+
+    await handle_on(q)
+
 
     '''
     q.page['sidebar-header'] = ui.header_card(

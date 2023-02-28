@@ -46,7 +46,7 @@ class MovX:
             if data:
                 data = data.get("movx_db", {})
                 self.locations.update( 
-                    { k: Location.from_dict(v) for k,v in data.get("locations", {}).items() } 
+                    { k: Location.from_dict(v) for k, v in data.get("locations", {}).items() } 
                 )
                 self.dcps = [ DCP.from_dict(v) for v in data.get("dcps", []) ]
             else:

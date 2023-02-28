@@ -23,8 +23,7 @@ async def location_layout(q: Q, name):
         ]
     )
 
-@on()
-async def show_locs_list(q):
+def show_locs_list(q):
     q.page['locations_sidebar'] = ui.form_card(box=ui.box('sidebar', size=0),
         items=[
             ui.inline(justify="between", items = [ ui.text_xl("Locations"), ui.button(name='show_add_location', label='add') ] ),
