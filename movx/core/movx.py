@@ -87,7 +87,9 @@ class MovX:
                 ovs = self.get_ov_dcps(dcp.title)
                 if len(ovs) == 1:
                     dcp.ov = ovs[0]
-        
+
+        self.dcps = [ dcp for dcp in self.dcps if dcp.path.exists() ]
+
         self.save()
 
     def check(self, title = None):

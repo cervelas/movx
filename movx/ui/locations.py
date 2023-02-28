@@ -60,6 +60,7 @@ async def show_update_location(q):
         ui.textbox(name='location_path', label='Path', value=str(location.path)),
         ui.button(name='update_location', label='Update')
     ])
+    await q.page.save()
 
 @on()
 async def refresh_dcps(q):
