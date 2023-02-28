@@ -57,9 +57,17 @@ def setup_page(q, title=None, layout="full"):
         layouts=layouts[layout]
     )
     
-def breadcrumbs(q, breads=[]):
+def breadcrumbs(q, crumbs=[]):
 
-    breads = [ ("#", "Digital Cinema Packages") ] + breads
+    crumbs = [ ("#", "Digital Cinema Packages") ] + crumbs
 
-    q.page['breadcrumbs'] = ui.breadcrumbs_card(box='header', 
-                            items=[ ui.breadcrumb(name=b[0], label=b[1]) for b in breads])
+    q.page["breadcrumbs"] = ui.breadcrumbs_card(box='header', items=[ ui.breadcrumb(name=b[0], label=b[1]) for b in crumbs])
+    
+    '''q.page['header_content'] = ui.form_card(box="header_right", items=[ ui.inline(items=[
+                                            ui.button(name='refresh_dcps', label='refresh list', icon="refresh"),
+                                            ui.button(name='hide_locs_list' if q.user.show_loc else 'show_locs_list', 
+                                                        label='Hide Locations' if q.user.show_loc else 'Show Locations', icon="folder")
+                                            ])
+                                        ]
+                                )'''
+

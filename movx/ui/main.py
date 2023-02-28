@@ -2,8 +2,8 @@ from ctypes import windll
 from movx.core.movx import movx
 from movx.ui.list import make_flat_dcps_table, make_movie_dcps_table
 from movx.ui import setup_page, breadcrumbs, locations
-from h2o_wave import main, app, Q, ui, on, handle_on, site
-from movx.ui.dcp import dcp_infos_card, cpl_infos_card, pkl_infos_card, assetmap_infos_card
+from h2o_wave import main, app, Q, ui, on, handle_on
+from movx.ui.dcp import dcp_infos_card, cpl_infos_card, pkl_infos_card, assetmap_infos_card, dcp_parse, dcp_check
 
 
 @on('movie_list')
@@ -27,10 +27,8 @@ async def display_homepage(q: Q):
     setup_page(q, "DCP List", "side" if q.user.show_loc else "full")
 
     breadcrumbs(q)
-    dcps = []
 
-    for t, d in movx.dcps.items():
-        dcps += d
+    dcps = movx.dcps
 
     q.page['full_dcp_list'] = ui.form_card(box='content',
         items=[
@@ -45,62 +43,40 @@ async def display_homepage(q: Q):
         ]
     )
 
-        
-
-
 @on('#movie/{title}')
 async def movie_layout(q: Q, title):
     setup_page(q, title)
     breadcrumbs(q, [ ("current", title) ])
     
-    for dcp in movx.dcps.get(title) or []:
-        q.page['dcp-' + str(dcp.uri)] = ui.form_card(box='content',
+    for dcp in movx.get_movie_dcps(title) or []:
+        q.page['dcp-' + str(dcp.uid)] = ui.form_card(box='content',
             items=[
                 ui.text_xl(dcp.full_title),
                 ui.text_l(dcp.package_type),
                 ui.text_m(str(dcp.path)),
                 #ui.inline(justify="between", items = [ ui.text_xl(title), ui.button(name='refresh_dcps', label='refresh')] ),
                 #make_movie_dcps_table(dcps),
-                ui.buttons([ui.button(name='#dcp/' + str(dcp.uri), label='View', primary=True)]),
+                ui.buttons([ui.button(name='#dcp/' + str(dcp.uid), label='View', primary=True)]),
             ]
         )
     await q.page.save()
 
-@on('#dcp/{uri}')
-async def dcp_layout(q: Q, uri):
-    setup_page(q, "DCP " + uri, layout="2cols")
-    
-    dcp = movx.get(uri)
-
-    if dcp:
-
-        breadcrumbs(q, [ ("#movie/" + dcp.title, dcp.title),
-                        ('current', dcp.full_title) ])
-        
-        dcp_infos_card(q, dcp)
-        cpl_infos_card(q, dcp)
-        pkl_infos_card(q, dcp)
-        assetmap_infos_card(q, dcp)
-
-    else:
-
-        q.page["not-found"] = ui.form_card(box="header", items=[
-            ui.text(uri + " DCP not found")
-        ])
-
-    await q.page.save()
-
-movx.scan()
-
 
 @app('/movx')
 async def serve(q: Q):
+    movx.load()
 
+    if q.args["dcp_parse"]:
+        dcp_parse(q)
+
+    if q.args["dcp_check"]:
+        await dcp_check(q)
+        movx.save()
+
+    await handle_on(q)
 
     if q.args['#'] is None:
         await display_homepage(q)
-        
-    await handle_on(q)
 
     '''
     q.page['sidebar-header'] = ui.header_card(

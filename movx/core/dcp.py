@@ -3,6 +3,8 @@ import json
 import uuid
 from pathlib import Path
 
+from movx.core.location import Location
+
 import clairmeta
 
 class DCP:
@@ -12,13 +14,15 @@ class DCP:
         self.rel_path = self.path.relative_to(rel_to)
         self.location = location
         self.full_title = self.path.name
-        self.uri = uuid.uuid5(uuid.NAMESPACE_X500, str(self.path.absolute)) #"%s-%s-%s" % (self.location, self.rel_path, self.full_title)
+        self.uid = uuid.uuid5(uuid.NAMESPACE_X500, str(self.path.absolute())) #"%s-%s-%s" % (self.location, self.rel_path, self.full_title)
         self.title = self.full_title.split('_')[0]
         self.package_type = self.full_title.split('_')[-1]
         self.status = None
-        self.dcp_metadata = {}
+        self.report = {}
+        self.size = None
+        self.metadata = {}
         self.ov_path = None
-        self.parse()
+        self.dcp = clairmeta.DCP(self.path.absolute())
 
     def asset(self, id):
         for a in self.assets:
@@ -28,9 +32,12 @@ class DCP:
     
     def parse(self):
         try:
-            self.dcp = clairmeta.DCP(self.path)
-            self.dcp_metadata = self.dcp.parse()
-            self.package_type = self.dcp_metadata.get("package_type", None)
+            self.dcp._parsed = False
+            self.dcp._probeb = False
+            self.metadata = self.dcp.parse()
+
+            self.package_type = self.metadata.get("package_type", "Unknown")
+            self.size = self.metadata.get("size", 0)
         except Exception as e:
             print(e)
 
@@ -42,31 +49,32 @@ class DCP:
             pprint.pprint(c.short_desc())
             pprint.pprint([ e.message for e in c.errors ])
 
-        self.report = report
+
+        self.report = report.to_dict()
 
         return report
-
-    def print(self):
-        print(self.title)
 
     def to_dict(self):
         return {
             "title": str(self.title),
             "path": str(self.path),
             "rel_to": str(self.rel_to),
-            "location": str(self.location),
+            "location": self.location.to_dict(),
             "package_type": self.package_type,
             "status": self.status,
-            "metadata": json.dump(self.dcp_metadata),
+            "metadata": json.dumps(self.metadata),
+            "report": json.dumps(self.report),
             "ov_path": str(self.ov_path),
-            "uri": str(self.uri),
+            "uid": str(self.uid),
         }
 
     def from_dict(dic):
-        dcp = DCP(dic["path"], dic["rel_to"], dic["location"])
-        dcp.uri = uuid.UUID(dic["uri"])
+        location = Location.from_dict(dic["location"])
+        dcp = DCP(dic["path"], dic["rel_to"], location)
+        dcp.uid = uuid.UUID(dic["uid"])
         dcp.package_type = dic["package_type"]
         dcp.status = dic["status"]
-        dcp.metadata = json.parse(dic["metadata"])
+        dcp.metadata = json.loads(dic["metadata"])
+        dcp.report = json.loads(dic["report"])
         dcp.ov_path = dic["ov_path"]
-        
+        return dcp

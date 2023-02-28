@@ -6,7 +6,7 @@ class Location:
         self.name = name
         self.path = Path(path)
         self.enabled = True
-        self.db = self.check_for_db()
+        #self.db = self.check_for_db()
         self.dcps = {}
         self.dcps_found = 0
 
@@ -36,3 +36,5 @@ class Location:
         l = Location(d["name"], d["path"])
         l.enabled = d["enabled"]
         return l
+    
+default_location = Location("Current Directory", ".")

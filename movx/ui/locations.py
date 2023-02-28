@@ -31,10 +31,10 @@ async def show_locs_list(q):
         ]
     )
     for n, l in movx.locations.items():
-        q.page["dcp-" + n] = ui.form_card(box=ui.box(zone='sidebar', size='0'), 
+        q.page["dcp-" + n.replace(' ', '_')] = ui.form_card(box=ui.box(zone='sidebar', size='0'), 
                 items= [
                     ui.text_l(str(n)),
-                    ui.text_s(str(l.path)),
+                    ui.text_s(str(l.path.absolute())),
                 ],
                 commands = [ 
                         ui.command(name='hide_location', label='Hide', icon='hide', value=n),
@@ -65,6 +65,7 @@ async def show_update_location(q):
 @on()
 async def refresh_dcps(q):
     movx.scan()
+    await q.page.save()
 
 @on()
 async def update_location(q):

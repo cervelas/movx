@@ -2,38 +2,55 @@ import os
 import json
 import pprint
 import uuid
+import threading
+
 from movx.core.dcp import DCP
-from movx.core.location import Location
+from movx.core.location import Location, default_location
 from pathlib import Path
 
+lock = threading.Lock()
+
 class MovX:
+    '''
+    Keep a list of locations and dcp's
+
+    DCP management, scanning, checking
+
+    Provide DBA layer by save() and load()
+    '''
     def __init__(self):
         self.local_db = Path.home() / ".movx" / "db.json"
         self.locations = {}
-        self.dcps = {}
+        self.dcps = []
         self.load()
 
     def save(self):
-        self.local_db.parent.mkdir(exist_ok=True, parents=True)
-        db = { "movx_db": {
-                    "locations": { n: l.to_dict() for n, l in self.locations.items() },
-                    "dcps": { dcp.title: dcp.to_dict() for dcp in self.get_all() }
+        with lock:
+            self.local_db.parent.mkdir(exist_ok=True, parents=True)
+            # this is actually the database
+            db = { "movx_db": {
+                        "locations": { n: l.to_dict() for n, l in self.locations.items() },
+                        "dcps": [ dcp.to_dict() for dcp in self.dcps ],
+                    }
                 }
-            }
-        db_str = json.dumps(db, indent=4)
-        self.local_db.write_text(db_str)
+            
+            db_str = json.dumps(db, indent=4)
+            self.local_db.write_text(db_str)
 
-    def load(self):
-        if self.local_db.exists():
-            with open(self.local_db) as f:
-                db = json.load(f)
-                db = db.get("movx_db", {})
+    def load(self, data=None):
+        with lock:
+            if data is None:
+                if self.local_db.exists():
+                    with open(self.local_db) as f:
+                        data = json.load(f)
+            if data:
+                data = data.get("movx_db", {})
                 self.locations.update( 
-                    { k: Location.from_dict(v) for k,v in db.get("locations", {}).items() } 
+                    { k: Location.from_dict(v) for k,v in data.get("locations", {}).items() } 
                 )
-                self.dcps.update( 
-                    { k: DCP.from_dict(v) for k,v in db.get("dcps", {}).items() } 
-                )
+                self.dcps = [ DCP.from_dict(v) for v in data.get("dcps", []) ]
+            else:
+                self.locations.update( { default_location.name: default_location } )
 
     def update_locations(self, name, path):
         self.locations.update( { name: Location(name, path) })
@@ -41,13 +58,12 @@ class MovX:
 
     def del_location(self, name):
         self.locations.pop(name, None)
-        self.load()
+        self.save()
 
     def scan(self):
         '''
         Scan for folders with ASSETMAP recursively
         '''
-        self.dcps = {}
 
         for name, loc in self.locations.items():
             try:
@@ -55,19 +71,24 @@ class MovX:
                 for am in assetmaps:
                     dcp = DCP(am.parent, loc.path, loc)
 
-                    if dcp.title not in self.dcps:
-                        self.dcps.update( { dcp.title: [] })
+                    dcp.parse()
+
+                    if self.get_dcp(dcp.uid):
+                        dcp.report = self.get_dcp(dcp.uid).report
+                        self.dcps.remove(self.get_dcp(dcp.uid))
                     
-                    self.dcps[dcp.title].append(dcp)
+                    self.dcps.append(dcp)
 
             except Exception as e:
                 print(e)
         
-        for dcp in self.get_all():
+        for dcp in self.dcps:
             if dcp.package_type != "OV":
                 ovs = self.get_ov_dcps(dcp.title)
                 if len(ovs) == 1:
                     dcp.ov = ovs[0]
+        
+        self.save()
 
     def check(self, title = None):
         '''
@@ -76,7 +97,7 @@ class MovX:
         dcps = self.dcps.get(title)
         if dcps:
             for dcp in dcps:
-                print("\t Check %s (%s)\n\n" % (dcp.uri))
+                print("\t Check %s (%s)\n\n" % (dcp.uid))
                 if dcp.check() is False:
                     return False
     
@@ -84,28 +105,19 @@ class MovX:
         for title, dcps in self.dcps.items():
             print(title)
             for dcp in dcps:
-                print("\t%s \n\t\t(%s)\n" % (dcp.full_title, dcp.uri))
+                print("\t%s \n\t\t(%s)\n" % (dcp.full_title, dcp.uid))
+
+    def get_dcp(self, uid):
+        for dcp in self.dcps:
+            if str(dcp.uid) == str(uid):
+                return dcp
+        return None
+
+    def get_movie_dcps(self, title):
+        return [ dcp for dcp in self.dcps if dcp.title == title ]
     
-    def get_all(self):
-        dcps = []
-        for t, d in self.dcps.items():
-            dcps += d
-
-        return dcps
-
-    def get(self, uri):
-        dcps = []
-        for t, d in self.dcps.items():
-            dcps += d
-
-        dcp = None
-        for d in dcps:
-            if str(d.uri) == uri:
-                dcp = d
-        return dcp
-
     def get_ov_dcps(self, title):
-        dcps = self.dcps.get(title)
+        dcps = self.get_movie_dcps(title)
         ovs = []
         if dcps:
             for dcp in dcps:
