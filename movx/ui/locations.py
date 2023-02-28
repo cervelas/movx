@@ -3,7 +3,6 @@ import subprocess
 import os
 import webbrowser
 import string
-from ctypes import windll
 from movx.core.movx import movx
 from h2o_wave import app, Q, ui, main, on
 
