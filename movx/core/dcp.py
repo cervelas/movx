@@ -38,6 +38,7 @@ class DCP:
             self.dcp._probeb = True
             self.metadata = self.dcp.parse()
             self.package_type = self.metadata.get("package_type", "Unknown")
+            self.size = self.metadata.get("size", "Unknown")
 
             if len(self.metadata.get("cpl_list", [])) > 0:
                 self.namings = self.metadata["cpl_list"][0]["Info"]["CompositionPlaylist"]["NamingConvention"]
