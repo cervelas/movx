@@ -19,7 +19,7 @@ def start_waved(logs=False):
         waved_exe = "waved.exe"
         waved_path = os.path.join(os.path.dirname(__file__), "./vendor/wave-0.24.2-windows-amd64/")
     os.chdir(waved_path)
-    subprocess.Popen(os.path.join(waved_path, waved_exe), "0.0.0.0")
+    subprocess.Popen([os.path.join(waved_path, waved_exe), "0.0.0.0"])
     os.chdir(cwd)
 
 def start_serve(reload=False):
