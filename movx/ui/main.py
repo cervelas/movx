@@ -34,11 +34,14 @@ async def display_homepage(q: Q):
 
     q.page['full_dcp_list'] = ui.form_card(box='content',
         items=[
-            ui.inline(justify="between", items = [  ui.text_xl("Digital Cinema Packages"), 
+            ui.inline(justify="between", items = [  ui.text_xl("Every DCP"), 
                                                     ui.inline(items = [   
-                                                        ui.button(name='refresh_dcps', label='refresh list', icon="refresh"),
+                                                        ui.button(name='refresh_dcps', label='', icon="refresh"),
+                                                        #ui.button(name='show_flat_list', label='Flat', icon="BulletedTreeList"),
+                                                        #ui.button(name='show_detail_list', label='Details', icon="LineStyle"),
+                                                        #ui.button(name='show_manage_list', label='Management', icon="WaitlistConfirm"),
                                                         ui.button(name='hide_locs_list' if q.user.show_loc else 'show_locs_list', 
-                                                                  label='Hide Locations' if q.user.show_loc else 'Show Locations', icon="folder")
+                                                                  label='Hide Locations' if q.user.show_loc else 'Locations', icon="OfflineStorageSolid")
                                                         ])
                                                     ]),
             make_flat_dcps_table(dcps),
