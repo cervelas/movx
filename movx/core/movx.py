@@ -48,7 +48,11 @@ class MovX:
                 self.locations.update( 
                     { k: Location.from_dict(v) for k, v in data.get("locations", {}).items() } 
                 )
-                self.dcps = [ DCP.from_dict(v) for v in data.get("dcps", []) ]
+                self.dcps = []
+                for v in data.get("dcps", []):
+                    dcp = DCP.from_dict(v)
+                    if dcp:
+                        self.dcps.append(dcp)
             else:
                 self.locations.update( { default_location.name: default_location } )
 

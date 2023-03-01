@@ -49,9 +49,7 @@ def dcp_parse(q):
 def dcp_infos_card(q: Q, dcp):
     infos = one_level_dict(dcp.metadata)
 
-    if len(dcp.metadata.get("cpl_list", [])) > 0:
-        namings = dcp.metadata["cpl_list"][0]["Info"]["CompositionPlaylist"]["NamingConvention"]
-        infos.update({ k: v.get("Value") for k, v in namings.items() })
+    infos.update({ k: v.get("Value") for k, v in dcp.namings.items() })
     
     infos.pop("path", None)
     infos.pop("package_type", None)

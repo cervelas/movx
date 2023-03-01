@@ -19,7 +19,9 @@ class DCP:
         self.package_type = self.full_title.split('_')[-1]
         self.status = None
         self.report = {}
+        self.kind = None
         self.size = None
+        self.namings = {}
         self.metadata = {}
         self.ov_path = None
         self.dcp = clairmeta.DCP(self.path.absolute())
@@ -33,11 +35,14 @@ class DCP:
     def parse(self):
         try:
             self.dcp._parsed = False
-            self.dcp._probeb = False
+            self.dcp._probeb = True
             self.metadata = self.dcp.parse()
-
             self.package_type = self.metadata.get("package_type", "Unknown")
-            self.size = self.metadata.get("size", 0)
+
+            if len(self.metadata.get("cpl_list", [])) > 0:
+                self.namings = self.metadata["cpl_list"][0]["Info"]["CompositionPlaylist"]["NamingConvention"]
+                self.kind = self.metadata["cpl_list"][0]["Info"]["CompositionPlaylist"]["ContentKind"]
+
         except Exception as e:
             print(e)
 
@@ -64,19 +69,29 @@ class DCP:
             "status": self.status,
             "metadata": json.dumps(self.metadata),
             "report": json.dumps(self.report),
+            "namings": json.dumps(self.namings),
             "ov_path": str(self.ov_path),
+            "kind": str(self.kind),
             "size": self.size,
             "uid": str(self.uid),
         }
 
     def from_dict(dic):
+        if not Path(dic["path"]).exists():
+            return False
         location = Location.from_dict(dic["location"])
         dcp = DCP(dic["path"], dic["rel_to"], location)
-        dcp.uid = uuid.UUID(dic["uid"])
-        dcp.package_type = dic["package_type"]
-        dcp.status = dic["status"]
-        dcp.metadata = json.loads(dic["metadata"])
-        dcp.report = json.loads(dic["report"])
-        dcp.ov_path = dic["ov_path"]
-        dcp.size = dic["size"]
-        return dcp
+        try:
+            dcp.uid = uuid.UUID(dic["uid"])
+            dcp.package_type = dic["package_type"]
+            dcp.status = dic["status"]
+            dcp.metadata = json.loads(dic["metadata"])
+            dcp.report = json.loads(dic["report"])
+            dcp.namings = json.loads(dic["namings"])
+            dcp.ov_path = dic["ov_path"]
+            dcp.kind = dic["kind"]
+            dcp.size = dic["size"]
+            return dcp
+        except Exception as e:
+            print(e)
+            return dcp
