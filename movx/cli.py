@@ -43,9 +43,7 @@ def run():
     uvicorn.run("movx.ui.main:main", log_level="warning", reload=True)
 
 @main.command()
-@click.argument("path")
-def scan(path):
-    movx.update_locations("NEW", path)
+def scan():
     movx.scan()
     movx.pretty_print()
     

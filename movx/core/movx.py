@@ -104,10 +104,8 @@ class MovX:
                     return False
     
     def pretty_print(self):
-        for title, dcps in self.dcps.items():
-            print(title)
-            for dcp in dcps:
-                print("\t%s \n\t\t(%s)\n" % (dcp.full_title, dcp.uid))
+        for dcp in self.dcps:
+            print("\t%s \n\t\t(%s)\n" % (dcp.full_title, dcp.uid))
 
     def get_dcp(self, uid):
         for dcp in self.dcps:
