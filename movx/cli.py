@@ -13,13 +13,13 @@ def start_waved(logs=False):
     print("starting Wave Server")
     os.environ["H2O_WAVE_NO_LOG"] = "0" if logs else "1"
     cwd = os.getcwd()
-    waved_exe = "waved 0.0.0.0"
+    waved_exe = "waved"
     waved_path = os.path.join(os.path.dirname(__file__), "./vendor/wave-0.24.2-linux-amd64/")
     if sys.platform.startswith('win'):
-        waved_exe = "waved.exe 0.0.0.0"
+        waved_exe = "waved.exe"
         waved_path = os.path.join(os.path.dirname(__file__), "./vendor/wave-0.24.2-windows-amd64/")
     os.chdir(waved_path)
-    subprocess.Popen(os.path.join(waved_path, waved_exe))
+    subprocess.Popen(os.path.join(waved_path, waved_exe), "0.0.0.0")
     os.chdir(cwd)
 
 def start_serve(reload=False):
