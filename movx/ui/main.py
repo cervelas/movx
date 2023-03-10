@@ -65,7 +65,10 @@ async def display_homepage(q: Q):
         for d in movx.get_location_dcps(loc):
             print(d)
             loc_size += d.metadata.get("size_bytes", 0)
-        fraction = loc_size / total_size
+        if loc_size > 0:
+            fraction = loc_size / total_size
+        else:
+            fraction = 0
         stats.append(ui.pie(label=name, value=convert_size(loc_size), fraction=fraction, color="$red", aux_value=convert_size(loc_size)))
 
     q.page['stat'] = ui.wide_pie_stat_card(
