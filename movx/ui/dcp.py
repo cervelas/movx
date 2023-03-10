@@ -11,7 +11,7 @@ from movx.ui import setup_page, breadcrumbs
 async def dcp_check(q):
     dcp = movx.get_dcp(q.args.dcp_check)
     dcp.dcp._parsed = False
-    page = q.page.add('check_progress', ui.form_card(box="header", items = [
+    page = q.page.add('check_progress_' + str(dcp.uid), ui.form_card(box="header", items = [
             ui.progress(
                 label='Check',
                 caption=f'progress',
@@ -36,15 +36,19 @@ async def dcp_check(q):
 
     with concurrent.futures.ThreadPoolExecutor() as pool:
         report = await q.exec(pool, dcp.check, None, check_callback)
-        page = q.page.add('result', 
-                ui.template_card(box="header", title="Check Report Result", content="<pre>" + report.pretty_str() + "<pre>")
-        )
+        if hasattr(report, "pretty_str"):
+            page = q.page.add('result', 
+                    ui.template_card(box="header", title="Check Report Result", content="<pre>" + report.pretty_str() + "<pre>")
+            )
+        else:
+            page = q.page.add('result', 
+                    ui.template_card(box="header", title="Check Report Result", content="<pre>" + str(report) + "<pre>")
+            )
 
 def dcp_parse(q):
     dcp = movx.get_dcp(q.args.dcp_parse)
     if dcp:
         dcp.parse()
-        print(dcp.metadata)
 
 def dcp_infos_card(q: Q, dcp):
     infos = one_level_dict(dcp.metadata)
@@ -80,14 +84,14 @@ def dcp_check_card(q: Q, dcp):
         
         check_form = [  ]
         if dcp.package_type != "OV":
-            if len(movx.get_ov_dcps(dcp.title)) > 1:
-                check_form.append(
-                    ui.dropdown(name='dropdown', label='Dropdown', required=True, placeholder="Select OV DCP",
-                                choices=[ ui.choice(name=str(dcp.uid), label=dcp.path.absolute()) for dcp in movx.get_ov_dcps(dcp.title)
-                    ])
-                )
-            else:
-                dcp.ov_path = movx.get_ov_dcps(dcp.title)[0]
+            #if len(movx.get_ov_dcps(dcp.title)) > 1:
+            check_form.append(
+                ui.dropdown(name='dropdown', label='OV', required=True, width="500px",
+                            choices=[ ui.choice(name=str(dcp.uid), label=str(dcp.path.absolute())) for dcp in movx.get_ov_dcps(dcp.title)
+                ])
+            )
+            #else:
+            #    dcp.ov_path = movx.get_ov_dcps(dcp.title)[0]
         check_form.append(ui.button(name="dcp_check", label="Check DCP", value=str(dcp.uid)))
 
         q.page['check_result_' + str(dcp.uid)] = ui.form_card(box=ui.box('header', size=0),

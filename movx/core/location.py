@@ -7,7 +7,7 @@ class Location:
         self.path = Path(path)
         self.enabled = True
         #self.db = self.check_for_db()
-        self.dcps = {}
+        self.dcps = []
         self.dcps_found = 0
 
     def check_for_db(self):
