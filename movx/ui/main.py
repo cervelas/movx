@@ -1,81 +1,26 @@
 import math
-from movx.core.movx import movx
-from movx.ui.list import make_flat_dcps_table, make_movie_dcps_table
-from movx.ui import setup_page, breadcrumbs, locations
-from h2o_wave import main, app, Q, ui, on, handle_on
-from movx.ui.dcp import dcp_infos_card, cpl_infos_card, pkl_infos_card, assetmap_infos_card, dcp_parse, dcp_check
+import logging
+from h2o_wave import main, app, Q, ui, on, handle_on, copy_expando
 
+from movx.ui import setup_page, breadcrumbs, crash_report, dcps, settings, tasks
+
+
+# Set up logging
+logging.basicConfig(format='%(levelname)s:\t[%(asctime)s]\t%(message)s', level=logging.INFO)
 
 @on('movie_list')
 async def on_row_clicked(q: Q):
-    print("row clicked " + q.args.movie_list[0])
     q.page['meta'] = ui.meta_card(box='', redirect=q.args.movie_list[0])
     await q.page.save()
 
-@on('full_list')
+@on('all_dcp_list')
 async def on_row_clicked(q: Q):
-    print("row clicked " + q.args.full_list[0])
-    q.page['meta'] = ui.meta_card(box='', redirect=q.args.full_list[0])
+    q.page['meta'] = ui.meta_card(box='', redirect='#dcp/' + q.args.all_dcp_list[0])
     await q.page.save()
 
-async def display_homepage(q: Q):
-    if q.args.show_locs_list:
-        q.user.show_loc = True
-    elif q.args.hide_locs_list:
-        q.user.show_loc = False
-    
-    setup_page(q, "DCP List", "side" if q.user.show_loc else "full")
-
-    breadcrumbs(q)
-
-    if q.user.show_loc:
-        locations.show_locs_list(q)
-
-    q.page['full_dcp_list'] = ui.form_card(box='content',
-        items=[
-            ui.inline(justify="between", items = [  ui.text_xl(""), 
-                                                    ui.inline(items = [   
-                                                        ui.button(name='refresh_dcps', label='', icon="refresh"),
-                                                        #ui.button(name='show_flat_list', label='Flat', icon="BulletedTreeList"),
-                                                        #ui.button(name='show_detail_list', label='Details', icon="LineStyle"),
-                                                        #ui.button(name='show_manage_list', label='Management', icon="WaitlistConfirm"),
-                                                        ui.button(name='hide_locs_list' if q.user.show_loc else 'show_locs_list', 
-                                                                  label='Hide Locations' if q.user.show_loc else 'Locations', icon="OfflineStorageSolid")
-                                                        ])
-                                                    ]),
-            make_flat_dcps_table(movx.dcps),
-        ]
-    )
-
-    def convert_size(size_bytes):
-        if size_bytes == 0:
-            return "0B"
-        size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-        i = int(math.floor(math.log(size_bytes, 1024)))
-        p = math.pow(1024, i)
-        s = round(size_bytes / p, 2)
-        return "%s %s" % (s, size_name[i])
-
-    stats = []
-    total_size = 0
-    for d in movx.dcps:
-        total_size += d.metadata.get("size_bytes", 0)
-    for name, loc in movx.locations.items():
-        loc_size = 0
-        for d in movx.get_location_dcps(loc):
-            print(d)
-            loc_size += d.metadata.get("size_bytes", 0)
-        if loc_size > 0:
-            fraction = loc_size / total_size
-        else:
-            fraction = 0
-        stats.append(ui.pie(label=name, value=convert_size(loc_size), fraction=fraction, color="$red", aux_value=convert_size(loc_size)))
-
-    q.page['stat'] = ui.wide_pie_stat_card(
-        box=ui.box('footer', size=3),
-        title='Total Size ' + convert_size(total_size),
-        pies=stats,
-    )
+@on('#movies')
+async def movies_layout(q: Q):
+    pass
 
 @on('#movie/{title}')
 async def movie_layout(q: Q, title):
@@ -93,24 +38,43 @@ async def movie_layout(q: Q, title):
                 ui.buttons([ui.button(name='#dcp/' + str(dcp.uid), label='View', primary=True)]),
             ]
         )
+
     await q.page.save()
 
-
-@app('/movx')
+@app('/')
 async def serve(q: Q):
-    movx.load()
 
-    if q.args["dcp_parse"]:
-        dcp_parse(q)
+    
+    try:
+        # Initialize the app if not already
+        if not q.app.initialized:
+            await initialize_app(q)
 
-    if q.args["dcp_check"]:
-        await dcp_check(q)
-        movx.save()
+        # Initialize the client if not already
+        if not q.client.initialized:
+            await initialize_client(q)
 
-    if q.args['#'] is None:
-        await display_homepage(q)
+        # Update theme if toggled
+        elif q.args.theme_dark is not None and q.args.theme_dark != q.client.theme_dark:
+            await update_theme(q)
 
-    await handle_on(q)
+        '''# Update table if query is edited
+        elif q.args.query is not None and q.args.query != q.client.query:
+            await apply_query(q)
+
+        # Update dataset if changed
+        elif q.args.dataset is not None and q.args.dataset != q.client.dataset:
+            await update_dataset(q)'''
+        # Delegate query to query handlers
+        if await handle_on(q):
+            pass
+
+        # Adding this condition to help in identifying bugs
+        else:
+            await dcps.overview(q)
+
+    except Exception as error:
+        await show_error(q, error=str(error))
 
 
     '''
@@ -150,6 +114,91 @@ async def serve(q: Q):
                 print(dirs)
             except Exception as e:
                 print(e)
-
     '''
+    
+    await q.page.save()
+
+
+async def initialize_app(q: Q):
+    """
+    Initialize the app.
+    """
+
+    logging.info('Initializing app')
+
+    # Set initial argument values
+    # q.app.cards = ['main', 'error']
+
+    q.app.initialized = True
+
+
+async def initialize_client(q: Q):
+    """
+    Initialize the client (browser tab).
+    """
+
+    logging.info('Initializing client')
+
+    # Set initial argument values
+    '''q.client.theme_dark = True
+    q.client.datasets = ['waveton_sample.csv']
+    q.client.dataset = 'waveton_sample.csv'
+    q.client.data = q.app.default_data
+    q.client.data_query = q.client.data
+    q.client.query = ''
+
+    # Add layouts, header and footer
+    q.page['meta'] = cards.meta
+    q.page['header'] = cards.header
+    q.page['footer'] = cards.footer
+
+    # Add cards for the main page
+    q.page['main'] = cards.main'''
+
+    q.client.initialized = True
+
+async def update_theme(q: Q):
+    """
+    Update theme of app.
+    """
+
+    # Copying argument values to client
+    copy_expando(q.args, q.client)
+
+    if q.client.theme_dark:
+        logging.info('Updating theme to dark mode')
+
+        # Update theme from light to dark mode
+        q.page['meta'].theme = 'h2o-dark'
+        q.page['header'].icon_color = 'black'
+    else:
+        logging.info('Updating theme to light mode')
+
+        # Update theme from dark to light mode
+        q.page['meta'].theme = 'light'
+        q.page['header'].icon_color = '#FEC924'
+
+    await q.page.save() 
+
+async def show_error(q: Q, error: str):
+    """
+    Displays errors.
+    """
+
+    logging.error(error)
+
+    # Format and display the error
+    q.page['error'] = crash_report(q)
+
+    await q.page.save()
+
+async def handle_fallback(q: Q):
+    """
+    Handle fallback cases.
+    """
+
+    logging.info('Adding fallback page')
+
+    #q.page['fallback'] = cards.fallback
+
     await q.page.save()

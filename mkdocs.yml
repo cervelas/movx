@@ -1,0 +1,16 @@
+site_name: MovX
+
+theme:
+  name: material
+
+plugins:
+- search
+- gen-files:
+    scripts:
+      - docs/gen_ref_pages.py  # or any other name or path
+- mkdocstrings:
+    handlers:
+      python:
+        import:
+        - url: https://docs.python-requests.org/en/master/objects.inv
+          domains: [std, py]

@@ -15,6 +15,8 @@ dependencies = [
     "h2o_wave",
     "uvicorn",
     "click",
+    "mkdocstrings-python",
+    "pywebview",
 ]
 
 [project.scripts]
