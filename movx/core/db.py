@@ -1,20 +1,28 @@
 import uuid
 import time
-from typing import List, Optional, Any
-from typing_extensions import Annotated
-from datetime import datetime
+from typing import List, Optional
 from pathlib import Path
 from contextlib import contextmanager
 from sqlalchemy_continuum import make_versioned
 
-from sqlalchemy import ForeignKey, DateTime, JSON, create_engine, select, delete
-from sqlalchemy.orm import relationship, DeclarativeBase, mapped_column, Mapped, MappedAsDataclass, sessionmaker, scoped_session, validates, configure_mappers
+from sqlalchemy import ForeignKey, JSON, create_engine, select, delete
+from sqlalchemy.orm import (
+    relationship,
+    DeclarativeBase,
+    mapped_column,
+    Mapped,
+    MappedAsDataclass,
+    sessionmaker,
+    scoped_session,
+    validates,
+    configure_mappers,
+)
 
 db_path = Path.home() / ".movx" / "movx.db"
 
-#db_path.unlink()
+# db_path.unlink()
 
-db_url = 'sqlite:///%s' % db_path.absolute()
+db_url = "sqlite:///%s" % db_path.absolute()
 
 make_versioned(user_cls=None)
 
@@ -27,12 +35,14 @@ Session = scoped_session(session_factory)
 
 session = Session()
 
-class Base(MappedAsDataclass, DeclarativeBase):   
-    '''
+
+class Base(MappedAsDataclass, DeclarativeBase):
+    """
     Base Class for DB Declarative Model
 
     Contain some useful function to make working with Model Object easier
-    ''' 
+    """
+
     __allow_unmapped__ = False
 
     def add(self):
@@ -42,24 +52,22 @@ class Base(MappedAsDataclass, DeclarativeBase):
 
     def delete(self):
         with session:
-            session.execute( delete(self.__class__).where(self.__class__.id == self.id))
+            session.execute(delete(self.__class__).where(self.__class__.id == self.id))
             session.commit()
-        
-    def get(self):
-        return Session.get(self.__class__, self.id)
+
+    def get(self, id=None):
+        return Session.get(self.__class__, id or self.id)
 
     def update(self, **args):
         with session:
-            session.execute( self.__table__.update().where(self.__class__.id == self.id).values( args ) )
+            session.execute(
+                self.__table__.update().where(self.__class__.id == self.id).values(args)
+            )
             session.commit()
 
     @classmethod
-    def get(cls, id):
-        return Session.get(cls, id)
-
-    @classmethod
     def get_all(cls):
-        return Session.scalars( select(cls) ).all()
+        return Session.scalars(select(cls)).all()
 
     @classmethod
     def clear_all(cls):
@@ -74,21 +82,27 @@ class Base(MappedAsDataclass, DeclarativeBase):
             yield t
             session.commit()
 
+
 class Status(Base):
-    __tablename__ = 'status'
+    __tablename__ = "status"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
-    status_id: Mapped[int] = mapped_column(ForeignKey("status.id"), init=False, nullable=True)
+    status_id: Mapped[int] = mapped_column(
+        ForeignKey("status.id"), init=False, nullable=True
+    )
     name: Mapped[str] = mapped_column(unique=True)
     color: Mapped[str] = mapped_column(unique=True)
     type: Mapped[Optional[str]] = mapped_column(default="")
-    nexts: Mapped[List["Status"]] = relationship( default_factory=list )
+    nexts: Mapped[List["Status"]] = relationship(default_factory=list)
+
 
 class Location(Base):
-    __tablename__ = 'location'
+    __tablename__ = "location"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
     path: Mapped[str] = mapped_column(unique=True)
     name: Mapped[str] = mapped_column(unique=True)
-    last_scan: Mapped[float] =  mapped_column(insert_default=time.time(), default=time.time())
+    last_scan: Mapped[float] = mapped_column(
+        insert_default=time.time(), default=time.time()
+    )
     netshare: Mapped[Optional[str]] = mapped_column(default="")
     type: Mapped[Optional[str]] = mapped_column(default="")
 
@@ -102,27 +116,35 @@ class Location(Base):
             raise ValueError("Path %s do not exist" % Path(path).absolute())
         return path
 
+
 class Movie(Base):
-    __tablename__ = 'movie'
+    __tablename__ = "movie"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
     title: Mapped[str]
     dcps: Mapped[List["DCP"]] = relationship(
         back_populates="movie", default_factory=list
     )
 
-    status_id: Mapped[int] = mapped_column(ForeignKey(Status.id), init=False, nullable=True)
+    status_id: Mapped[int] = mapped_column(
+        ForeignKey(Status.id), init=False, nullable=True
+    )
     status: Mapped[Optional["Status"]] = relationship(default=None)
 
+
 class DCP(Base):
-    __tablename__ = 'dcp'
+    __tablename__ = "dcp"
     __versioned__ = {}
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
 
     uid: Mapped[uuid.UUID] = mapped_column(init=False, unique=True)
 
     location_id: Mapped[int] = mapped_column(ForeignKey(Location.id), init=False)
-    movie_id: Mapped[int] = mapped_column(ForeignKey(Movie.id), init=False, nullable=True)
-    status_id: Mapped[int] = mapped_column(ForeignKey(Status.id), init=False, nullable=True)
+    movie_id: Mapped[int] = mapped_column(
+        ForeignKey(Movie.id), init=False, nullable=True
+    )
+    status_id: Mapped[int] = mapped_column(
+        ForeignKey(Status.id), init=False, nullable=True
+    )
 
     path: Mapped[str] = mapped_column(unique=True)
 
@@ -138,7 +160,7 @@ class DCP(Base):
     owner: Mapped[Optional[str]] = mapped_column(default="")
 
     tasks: Mapped[List["Task"]] = relationship(
-       back_populates="dcp", default_factory=list
+        back_populates="dcp", default_factory=list
     )
 
     @validates("path")
@@ -146,9 +168,10 @@ class DCP(Base):
         if not Path(path).exists():
             raise ValueError("Path %s do not exist" % Path(path).absolute())
         return path
-    
+
     def __post_init__(self):
         self.uid = uuid.uuid5(uuid.NAMESPACE_X500, str(self.path))
+
 
 class Task(Base):
     __tablename__ = "task"
@@ -166,30 +189,34 @@ class Task(Base):
     progress: Mapped[Optional[int]] = mapped_column(insert_default=-1, default=-1)
     author: Mapped[Optional[str]] = mapped_column(insert_default="", default="")
     elapsed_time_s: Mapped[Optional[int]] = mapped_column(insert_default=0, default=0)
-    created_at: Mapped[Optional[float]] = mapped_column(insert_default=time.time(), default=time.time())
-    last_update: Mapped[Optional[float]] = mapped_column(insert_default=time.time(), default=time.time())
-    timestamp: Mapped[Optional[float]] = mapped_column(insert_default=time.time(), default=time.time())
+    created_at: Mapped[Optional[float]] = mapped_column(
+        insert_default=time.time(), default=time.time()
+    )
+    last_update: Mapped[Optional[float]] = mapped_column(
+        insert_default=time.time(), default=time.time()
+    )
+    timestamp: Mapped[Optional[float]] = mapped_column(
+        insert_default=time.time(), default=time.time()
+    )
     eta: Mapped[Optional[int]] = mapped_column(insert_default=-1, default=-1)
     result = mapped_column(JSON, insert_default={}, default={})
 
     def start(self):
         self.update(
-            progress=0,
-            status="started",
-            timestamp = time.time(),
-            created_at = time.time()
+            progress=0, status="started", timestamp=time.time(), created_at=time.time()
         )
 
-    def done(self, status="done", result = None):
+    def done(self, status="done", result=None):
         self.update(
-            progress = 1,
-            status = status,
-            result = result or { "no result" },
-            eta = 0,
-            elapsed_time_s = time.time() - self.timestamp,
+            progress=1,
+            status=status,
+            result=result or {"no result"},
+            eta=0,
+            elapsed_time_s=time.time() - self.timestamp,
         )
 
     def update_progress(self, progress, t):
+        """
         with fresh(self) as task:
             prog = round(progress, 2)
             task.status = "ready"
@@ -202,6 +229,8 @@ class Task(Base):
                 if prog >= 3:
                     task.eta = (1-prog) / ((prog) / t) + 1
             task.progress = prog
+        """
+
 
 configure_mappers()
 
@@ -214,7 +243,7 @@ def clear(cls):
         session.commit()
 
 
-'''
+"""
 # Create a Location object
 location = Location(path='/path/to/locsdati4sad2')
 
@@ -252,7 +281,8 @@ for action in dcp.actions:
         print(f'Limit: {action.limit}')
         print('---')
 
-'''
+"""
+
 
 def get_movies():
-    return Session.scalars( select(Movie) ).all()
+    return Session.scalars(select(Movie)).all()

@@ -1,32 +1,38 @@
-import math
 import logging
 from h2o_wave import main, app, Q, ui, on, handle_on, copy_expando
 
-from movx.ui import setup_page, breadcrumbs, crash_report, dcps, settings, tasks
+from movx.ui import setup_page, breadcrumbs, crash_report, dcps
 
 
 # Set up logging
-logging.basicConfig(format='%(levelname)s:\t[%(asctime)s]\t%(message)s', level=logging.INFO)
+logging.basicConfig(
+    format="%(levelname)s:\t[%(asctime)s]\t%(message)s", level=logging.INFO
+)
 
-@on('movie_list')
-async def on_row_clicked(q: Q):
-    q.page['meta'] = ui.meta_card(box='', redirect=q.args.movie_list[0])
+
+@on("movie_list")
+async def on_movie_row_clicked(q: Q):
+    q.page["meta"] = ui.meta_card(box="", redirect=q.args.movie_list[0])
     await q.page.save()
 
-@on('all_dcp_list')
+
+@on("all_dcp_list")
 async def on_row_clicked(q: Q):
-    q.page['meta'] = ui.meta_card(box='', redirect='#dcp/' + q.args.all_dcp_list[0])
+    q.page["meta"] = ui.meta_card(box="", redirect="#dcp/" + q.args.all_dcp_list[0])
     await q.page.save()
 
-@on('#movies')
+
+@on("#movies")
 async def movies_layout(q: Q):
     pass
 
-@on('#movie/{title}')
+
+@on("#movie/{title}")
 async def movie_layout(q: Q, title):
     setup_page(q, title)
-    breadcrumbs(q, [ ("current", title) ])
-    
+    breadcrumbs(q, [("current", title)])
+
+    """
     for dcp in movx.get_movie_dcps(title) or []:
         q.page['dcp-' + str(dcp.uid)] = ui.form_card(box='content',
             items=[
@@ -38,13 +44,13 @@ async def movie_layout(q: Q, title):
                 ui.buttons([ui.button(name='#dcp/' + str(dcp.uid), label='View', primary=True)]),
             ]
         )
+    """
 
     await q.page.save()
 
-@app('/')
-async def serve(q: Q):
 
-    
+@app("/")
+async def serve(q: Q):
     try:
         # Initialize the app if not already
         if not q.app.initialized:
@@ -58,13 +64,13 @@ async def serve(q: Q):
         elif q.args.theme_dark is not None and q.args.theme_dark != q.client.theme_dark:
             await update_theme(q)
 
-        '''# Update table if query is edited
+        """# Update table if query is edited
         elif q.args.query is not None and q.args.query != q.client.query:
             await apply_query(q)
 
         # Update dataset if changed
         elif q.args.dataset is not None and q.args.dataset != q.client.dataset:
-            await update_dataset(q)'''
+            await update_dataset(q)"""
         # Delegate query to query handlers
         if await handle_on(q):
             pass
@@ -76,8 +82,7 @@ async def serve(q: Q):
     except Exception as error:
         await show_error(q, error=str(error))
 
-
-    '''
+    """
     q.page['sidebar-header'] = ui.header_card(
         box=ui.box(zone='sidebar', size='0'),
         title='Locations',
@@ -90,13 +95,12 @@ async def serve(q: Q):
     )
 
     for i,l in enumerate(locations_list()):
-        q.page['loc%s' % i] = l'''
+        q.page['loc%s' % i] = l"""
 
-
-    '''
+    """
     def check_net_disk(d):
         lines = subprocess.check_output(['net', 'use', d]).split(b'\r\n')
-        if "not found" not in lines[0]: 
+        if "not found" not in lines[0]:
             ret = {}
             for l in lines:
                 kv = l.split(b'\t')
@@ -114,8 +118,8 @@ async def serve(q: Q):
                 print(dirs)
             except Exception as e:
                 print(e)
-    '''
-    
+    """
+
     await q.page.save()
 
 
@@ -124,7 +128,7 @@ async def initialize_app(q: Q):
     Initialize the app.
     """
 
-    logging.info('Initializing app')
+    logging.info("Initializing app")
 
     # Set initial argument values
     # q.app.cards = ['main', 'error']
@@ -137,10 +141,10 @@ async def initialize_client(q: Q):
     Initialize the client (browser tab).
     """
 
-    logging.info('Initializing client')
+    logging.info("Initializing client")
 
     # Set initial argument values
-    '''q.client.theme_dark = True
+    """q.client.theme_dark = True
     q.client.datasets = ['waveton_sample.csv']
     q.client.dataset = 'waveton_sample.csv'
     q.client.data = q.app.default_data
@@ -153,9 +157,10 @@ async def initialize_client(q: Q):
     q.page['footer'] = cards.footer
 
     # Add cards for the main page
-    q.page['main'] = cards.main'''
+    q.page['main'] = cards.main"""
 
     q.client.initialized = True
+
 
 async def update_theme(q: Q):
     """
@@ -166,19 +171,20 @@ async def update_theme(q: Q):
     copy_expando(q.args, q.client)
 
     if q.client.theme_dark:
-        logging.info('Updating theme to dark mode')
+        logging.info("Updating theme to dark mode")
 
         # Update theme from light to dark mode
-        q.page['meta'].theme = 'h2o-dark'
-        q.page['header'].icon_color = 'black'
+        q.page["meta"].theme = "h2o-dark"
+        q.page["header"].icon_color = "black"
     else:
-        logging.info('Updating theme to light mode')
+        logging.info("Updating theme to light mode")
 
         # Update theme from dark to light mode
-        q.page['meta'].theme = 'light'
-        q.page['header'].icon_color = '#FEC924'
+        q.page["meta"].theme = "light"
+        q.page["header"].icon_color = "#FEC924"
 
-    await q.page.save() 
+    await q.page.save()
+
 
 async def show_error(q: Q, error: str):
     """
@@ -188,17 +194,18 @@ async def show_error(q: Q, error: str):
     logging.error(error)
 
     # Format and display the error
-    q.page['error'] = crash_report(q)
+    q.page["error"] = crash_report(q)
 
     await q.page.save()
+
 
 async def handle_fallback(q: Q):
     """
     Handle fallback cases.
     """
 
-    logging.info('Adding fallback page')
+    logging.info("Adding fallback page")
 
-    #q.page['fallback'] = cards.fallback
+    # q.page['fallback'] = cards.fallback
 
     await q.page.save()
