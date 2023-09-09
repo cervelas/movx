@@ -1,9 +1,11 @@
 import sys
 import traceback
 import math
+import string
+from ctypes import windll
 from collections.abc import MutableMapping, MutableSequence
 
-from h2o_wave import ui, Q, expando_to_dict
+from h2o_wave import main, ui, Q, expando_to_dict
 
 layouts = {
     "default": [
@@ -214,3 +216,39 @@ def dict_to_searchable_table(dic):
             for k, v in dic.items()
         ],
     )
+
+def get_windows_drives():
+    drives = []
+    bitmask = windll.kernel32.GetLogicalDrives()
+    for letter in range(65, 65+26):
+        if bitmask & 1:
+            drives.append(chr(letter) + ":\\")
+        bitmask >>= 1
+
+    return drives
+
+def get_linux_drives():
+    # execute this : mount -l -t ext4,ext2
+    """
+    def check_net_disk(d):
+        lines = subprocess.check_output(['net', 'use', d]).split(b'\r\n')
+        if "not found" not in lines[0]:
+            ret = {}
+            for l in lines:
+                kv = l.split(b'\t')
+                ret.update( { kv[0]: kv[1] } )
+            return ret
+
+    for d in get_drives():
+        # check network usage
+        is_net = check_net_disk(d[0])
+        if is_net is not None and is_net["Status"] != "Disconnected":
+            print("check %s" % d)
+            try:
+                print(os.stat(d))
+                dirs = [f.path for f in os.scandir(d) if f.is_dir()]
+                print(dirs)
+            except Exception as e:
+                print(e)
+    """
+    pass

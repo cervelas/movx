@@ -34,7 +34,6 @@ def delete(location):
         session.execute(_delete(Location).where(Location.id == location.id))
         session.commit()
 
-
 def scan(location):
     location.dcps_found = 0
 

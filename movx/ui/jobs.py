@@ -1,8 +1,8 @@
 from h2o_wave import Q, ui, on
 from movx.ui import setup_page
-from movx.core.db import Task
-from movx.core import tasks
-from movx.ui.cards.tasks import tasks_list, generate_tasks_rows, task_details
+from movx.core.db import Job
+from movx.core import jobs
+from movx.ui.cards.jobs import tasks_list, generate_tasks_rows, task_details
 
 
 @on("tasks_list")
@@ -13,7 +13,7 @@ async def on_row_clicked(q: Q):
 
 @on()
 async def delete_all_tasks(q: Q):
-    tasks.delete_all()
+    jobs.delete_all()
     await q.page.save()
 
 
@@ -23,20 +23,20 @@ async def poll_tasks(q: Q):
     while True:
         await q.sleep(1)
 
-        _tasks = tasks.get_all()
+        _tasks = jobs.get_all()
 
         q.page["tasks_list"].table.rows = generate_tasks_rows(_tasks)
 
         await q.page.save()
 
 
-async def poll_task(q: Q, task: Task):
+async def poll_task(q: Q, task: Job):
     await q.page.save()
 
     while True:
         await q.sleep(1)
 
-        _task = Task.get(task.id)
+        _task = Job.get(task.id)
 
         q.page["task_detail_%s" % task.id].items[2].progress.value = _task.progress
         q.page["task_detail_%s" % task.id].items[2].progress.caption = _task.status
@@ -46,7 +46,7 @@ async def poll_task(q: Q, task: Task):
 
 @on("#task/{id}")
 async def task_detail_layout(q: Q, id):
-    task = Task.get(id)
+    task = Job.get(id)
 
     if task:
         setup_page(q, "Task Detail %s" % task.name)
@@ -83,7 +83,7 @@ async def task_detail_layout(q: Q, id):
 async def tasks_layout(q: Q):
     setup_page(q, "Task List ")
 
-    ts = Task.get_all()[::-1]
+    ts = Job.get_all()[::-1]
 
     if len(ts) > 0:
         q.page["tasks_list"] = ui.form_card(

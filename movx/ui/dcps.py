@@ -1,5 +1,5 @@
 from h2o_wave import Q, ui, on
-from movx.core import tasks
+from movx.core import jobs
 from movx.core import dcps as dcps
 from movx.ui import setup_page
 from movx.ui.cards.dcp import (
@@ -48,9 +48,9 @@ async def dcp_layout(q: Q, id):
     if dcp:
         q.client.current_dcp = dcp
 
-        last_report = tasks.get_last_result(dcp, "parse")
+        last_report = jobs.get_last_result(dcp, "parse")
 
-        last_check = tasks.get_last_result(dcp, "check")
+        last_check = jobs.get_last_result(dcp, "check")
 
         q.page["dcp_infos"] = dcp_infos_card(dcp)
 
@@ -98,7 +98,7 @@ async def overview(q: Q):
                     ),
                 ],
             ),
-            all_dcps_table(DCP.get_all()),
+            all_dcps_table(DCP.get()),
         ],
     )
 
@@ -116,7 +116,7 @@ async def overview(q: Q):
             fraction = loc_size / total_size
         else:
             fraction = 0
-        stats.append(ui.pie(label=name, value=convert_size(loc_size), fraction=fraction, 
+        stats.append(ui.pie(label=name, value=convert_size(loc_size), fraction=fraction,
                                                 color="$red", aux_value=convert_size(loc_size)))
 
     q.page['stat'] = ui.wide_pie_stat_card(

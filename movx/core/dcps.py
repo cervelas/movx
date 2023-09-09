@@ -4,25 +4,25 @@ from sqlalchemy import select
 from sqlalchemy.orm.session import make_transient
 import clairmeta
 
-from movx.core.db import DCP, Task, Movie, session
-from movx.core import tasks, DEFAULT_CHECK_PROFILE
+from movx.core.db import DCP, Job, Movie, session
+from movx.core import jobs, DEFAULT_CHECK_PROFILE
 
 
 def check_all(cb=None):
     ids = []
-    for dcp in DCP.get_all():
+    for dcp in DCP.get():
         ids.append(check(dcp, cb=cb))
 
     time.sleep(1)
     while True:
         time.sleep(1)
-        if tasks.ongoing() is False:
+        if jobs.ongoing() is False:
             break
         time.sleep(1)
 
     with session:
         for id in ids:
-            task = session.get(Task, id)
+            task = session.get(Job, id)
             print(task.status)
             if task.status == "error":
                 print(task.result)
@@ -31,17 +31,17 @@ def check_all(cb=None):
 
 def parse_all():
     ids = []
-    for dcp in DCP.get_all():
+    for dcp in DCP.get():
         ids.append(parse(dcp))
 
     print("ongoing")
-    while tasks.ongoing() is True:
+    while jobs.ongoing() is True:
         print("ongoing")
         time.sleep(2)
 
     with session:
         for id in ids:
-            task = session.get(Task, id)
+            task = session.get(Job, id)
             print(task.status)
             # print(task.result)
 
@@ -49,7 +49,7 @@ def parse_all():
             print(dcp.size)
 
 
-def parse_task(dcp, probe=False):
+def parse_task(job, dcp, probe=False):
     report = {}
 
     cm_dcp = clairmeta.DCP(dcp.path)
@@ -65,11 +65,13 @@ def parse_task(dcp, probe=False):
         update_movie(dcp, cpl["NamingConvention"]["FilmTitle"]["Value"])
         dcp.update(kind=cpl["ContentKind"])
 
+    job.finished.set()
+
     return "success", report
 
 
-def parse(dcp, probe=True):
-    task = Task(type="parse", name="Parsing %s" % dcp.title, dcp=dcp, status="created")
+def parse(dcp, probe=False):
+    task = Job(type="parse", name="Parsing %s" % dcp.title, dcp=dcp, status="created")
 
     with session:
         session.add(task)
@@ -77,20 +79,24 @@ def parse(dcp, probe=True):
 
     make_transient(dcp)
 
-    ttask = tasks.TTask(task, parse_task, dcp=dcp, probe=probe)
+    ttask = jobs.JobTask(task, parse_task, dcp=dcp, probe=probe)
+    
     ttask.start()
 
     # tasks.exec(_parse_task, task, wait_task=blocking, dcp = dcp, probe = probe)
     return task.id
 
 
-def check_task(dcp, profile=None, cb=None):
+def check_task(job, dcp, profile=None, cb=None):
     report = {}
     status = False
     profile = profile or DEFAULT_CHECK_PROFILE
 
+    def check_cb(file, current, final, t):
+        job.update(progress=current / final)
+
     cm_dcp = clairmeta.DCP(dcp.path)
-    status, checkreport = cm_dcp.check(profile=profile, ov_path=None, hash_callback=cb)
+    status, checkreport = cm_dcp.check(profile=profile, ov_path=None, hash_callback=check_cb)
 
     report = checkreport.to_dict()
 
@@ -98,29 +104,23 @@ def check_task(dcp, profile=None, cb=None):
     report["fails"] = [f.to_dict() for f in checkreport.checks_failed()]
     report["bypassed"] = [b.to_dict() for b in checkreport.checks_bypassed()]
 
+    job.finished.set()
+
     return status, report
 
-
 def check(dcp, profile=None, cb=None):
-    task = Task(type="check", name="Check %s" % dcp.title, dcp=dcp, status="created")
+    job = Job(type="check", name="Check %s" % dcp.title, dcp=dcp, status="created")
 
-    with session:
-        session.add(task)
-        session.commit()
+    job.add()
 
-    start = time.perf_counter()
+    #make_transient(dcp)
 
-    make_transient(dcp)
-
-    def check_cb(file, current, final, t):
-        task.update_progress(current / final, time.perf_counter() - start)
-
-    ttask = tasks.TTask(task, check_task, dcp=dcp, profile=profile, cb=check_cb)
-    ttask.start()
+    jt = jobs.JobTask(job, check_task, dcp=dcp, profile=profile)
+    jt.start()
 
     # ttask.run()
 
-    return task.id
+    return job.id
 
 
 def update_movie(dcp, movie_title):
@@ -140,11 +140,25 @@ def update_movie(dcp, movie_title):
             if movie.dcps:
                 print([d.title for d in movie.dcps])
                 if dcp in movie.dcps:
-                    print("already in !")
                     return
 
         movie.dcps.append(dcp)
         session.commit()
+
+def copy_task(dcp, target_folder):
+    report = {}
+    for f in dcp.files:
+        report[f] = { "status": "ready", "progress": 0, "info": "", "size": 0 }
+        '''
+        if (Path(target_folder) / f).exists():
+            //check size and crc
+            if file is wrong, compare file bytes then complete copy if possible with manual copy
+            // update status
+        else:
+            //copy the file using copy2 ?
+
+        '''
+
 
 
 def get_OVs(movie):

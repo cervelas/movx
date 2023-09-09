@@ -6,7 +6,7 @@ from movx import UvicornServer
 import webview
 import click
 import uvicorn
-from movx.core import dcps, db, locations, tasks
+from movx.core import dcps, db, jobs, locations
 
 
 def start_serve(log_level="warning", reload=False):
@@ -93,7 +93,7 @@ def clear():
 
 @main.command()
 def cancel():
-    tasks.cancel()
+    jobs.cancel()
 
 
 def print_tasks_cli(tasks):

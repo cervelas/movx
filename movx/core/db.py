@@ -1,5 +1,6 @@
 import uuid
 import time
+import inspect
 from typing import List, Optional
 from pathlib import Path
 from contextlib import contextmanager
@@ -35,12 +36,11 @@ Session = scoped_session(session_factory)
 
 session = Session()
 
-
 class Base(MappedAsDataclass, DeclarativeBase):
     """
     Base Class for DB Declarative Model
 
-    Contain some useful function to make working with Model Object easier
+    Contain some useful function to make working with Model Object easier, like in Django
     """
 
     __allow_unmapped__ = False
@@ -55,19 +55,29 @@ class Base(MappedAsDataclass, DeclarativeBase):
             session.execute(delete(self.__class__).where(self.__class__.id == self.id))
             session.commit()
 
-    def get(self, id=None):
-        return Session.get(self.__class__, id or self.id)
-
+    
     def update(self, **args):
         with session:
             session.execute(
                 self.__table__.update().where(self.__class__.id == self.id).values(args)
             )
             session.commit()
+    
+    @classmethod
+    def get(self=None, id=None):
+        with session:
+            if inspect.isclass(self):
+                if id:
+                    return session.get(self, id)
+                else:
+                    return session.scalars(select(self)).all()
+            else:
+                return session.get(self.__class__, self.id)
 
     @classmethod
     def get_all(cls):
-        return Session.scalars(select(cls)).all()
+        with session:
+            return Session.scalars(select(cls)).all()
 
     @classmethod
     def clear_all(cls):
@@ -82,7 +92,6 @@ class Base(MappedAsDataclass, DeclarativeBase):
             yield t
             session.commit()
 
-
 class Status(Base):
     __tablename__ = "status"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
@@ -93,7 +102,6 @@ class Status(Base):
     color: Mapped[str] = mapped_column(unique=True)
     type: Mapped[Optional[str]] = mapped_column(default="")
     nexts: Mapped[List["Status"]] = relationship(default_factory=list)
-
 
 class Location(Base):
     __tablename__ = "location"
@@ -106,9 +114,9 @@ class Location(Base):
     netshare: Mapped[Optional[str]] = mapped_column(default="")
     type: Mapped[Optional[str]] = mapped_column(default="")
 
-    dcps: Mapped[List["DCP"]] = relationship(
-        back_populates="location", default_factory=list
-    )
+    #dcps: Mapped[List["DCP"]] = relationship(
+    #    back_populates="location", default_factory=list
+    #)
 
     @validates("path")
     def validate_path(self, key, path):
@@ -116,20 +124,19 @@ class Location(Base):
             raise ValueError("Path %s do not exist" % Path(path).absolute())
         return path
 
-
 class Movie(Base):
     __tablename__ = "movie"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
     title: Mapped[str]
-    dcps: Mapped[List["DCP"]] = relationship(
-        back_populates="movie", default_factory=list
-    )
+    #dcps: Mapped[List["DCP"]] = relationship(
+    #    back_populates="movie", default_factory=list
+    #)
 
     status_id: Mapped[int] = mapped_column(
         ForeignKey(Status.id), init=False, nullable=True
     )
-    status: Mapped[Optional["Status"]] = relationship(default=None)
 
+    status: Mapped[Optional["Status"]] = relationship(default=None, lazy="selectin")
 
 class DCP(Base):
     __tablename__ = "dcp"
@@ -137,6 +144,7 @@ class DCP(Base):
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
 
     uid: Mapped[uuid.UUID] = mapped_column(init=False, unique=True)
+
 
     location_id: Mapped[int] = mapped_column(ForeignKey(Location.id), init=False)
     movie_id: Mapped[int] = mapped_column(
@@ -148,20 +156,16 @@ class DCP(Base):
 
     path: Mapped[str] = mapped_column(unique=True)
 
-    location: Mapped["Location"] = relationship()
+    location: Mapped["Location"] = relationship(Location, lazy="selectin")
 
-    movie: Mapped[Optional["Movie"]] = relationship(default=None)
-    status: Mapped[Optional["Status"]] = relationship(default=None)
+    movie: Mapped[Optional["Movie"]] = relationship(default=None, lazy="selectin")
+    status: Mapped[Optional["Status"]] = relationship(default=None, lazy="selectin")
 
     title: Mapped[str] = mapped_column(default="")
     package_type: Mapped[Optional[str]] = mapped_column(default="")
     kind: Mapped[Optional[str]] = mapped_column(default="")
     size: Mapped[Optional[int]] = mapped_column(default=0)
     owner: Mapped[Optional[str]] = mapped_column(default="")
-
-    tasks: Mapped[List["Task"]] = relationship(
-        back_populates="dcp", default_factory=list
-    )
 
     @validates("path")
     def validate_path(self, key, path):
@@ -173,13 +177,13 @@ class DCP(Base):
         self.uid = uuid.uuid5(uuid.NAMESPACE_X500, str(self.path))
 
 
-class Task(Base):
-    __tablename__ = "task"
+class Job(Base):
+    __tablename__ = "job"
 
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
 
     dcp_id: Mapped[int] = mapped_column(ForeignKey(DCP.id), init=False, nullable=True)
-    dcp: Mapped["DCP"] = relationship(DCP)
+    dcp: Mapped["DCP"] = relationship(DCP, lazy="selectin")
 
     name: Mapped[str]
     status: Mapped[str]
@@ -200,36 +204,6 @@ class Task(Base):
     )
     eta: Mapped[Optional[int]] = mapped_column(insert_default=-1, default=-1)
     result = mapped_column(JSON, insert_default={}, default={})
-
-    def start(self):
-        self.update(
-            progress=0, status="started", timestamp=time.time(), created_at=time.time()
-        )
-
-    def done(self, status="done", result=None):
-        self.update(
-            progress=1,
-            status=status,
-            result=result or {"no result"},
-            eta=0,
-            elapsed_time_s=time.time() - self.timestamp,
-        )
-
-    def update_progress(self, progress, t):
-        """
-        with fresh(self) as task:
-            prog = round(progress, 2)
-            task.status = "ready"
-            task.eta = -1
-            if prog >=1 :
-                task.status = "done"
-                task.eta = 0
-            elif prog > 0:
-                task.status = "inprogress"
-                if prog >= 3:
-                    task.eta = (1-prog) / ((prog) / t) + 1
-            task.progress = prog
-        """
 
 
 configure_mappers()

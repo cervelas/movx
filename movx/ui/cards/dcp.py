@@ -218,7 +218,7 @@ def dcp_infos_card(dcp):
                         required=True,
                         choices=[
                             ui.choice(status.name, status.name)
-                            for status in Status.get_all()
+                            for status in Status.get()
                         ],
                     ),
                 ]

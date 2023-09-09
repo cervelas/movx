@@ -1,7 +1,8 @@
+import os
 from pathlib import Path
 from h2o_wave import ui, on
 
-from movx.ui import convert_size
+from movx.ui import convert_size, get_windows_drives
 
 locations_commands = [
     ui.command(
@@ -26,7 +27,7 @@ def locations_list_card(locations):
                     "",
                     loc.name,
                     loc.path,
-                    str(len(loc.dcps)),
+                    "0", #str(len(loc.dcps)),
                     convert_size(size, False),
                 ],
             )
@@ -65,8 +66,7 @@ def locations_list_card(locations):
     )
 
 
-@on()
-async def show_add_location(q):
+def add_location_panel(q):
     q.page["meta"].side_panel = ui.side_panel(
         title="Add a new location",
         items=[
@@ -74,9 +74,8 @@ async def show_add_location(q):
             ui.textbox(name="location_path", label="Path", required=True),
             ui.button(name="add_location", label="Add & Scan"),
             ui.text(""),
-        ],
+        ] + dir_browser(q),
     )
-    await q.page.save()
 
 
 def location_side_panel(q, loc):
@@ -176,3 +175,22 @@ db_utils = ui.form_card(
         ),
     ],
 )
+
+def dir_browser(q):
+    dirs = []
+
+    if not q.args.dir_cwd:
+        # if application mode and windows
+        q.args.cwd = ""
+        dirs = get_windows_drives()
+    else:
+        if not q.args.cwd:
+            q.args.cwd = Path(q.args.dir_cwd)
+        else:
+            q.args.cwd = Path(q.args.cwd) / (q.args.dir_cwd or "")
+        dirs = [str(x) for x in q.args.cwd.iterdir() if x.is_dir()]
+    
+    return [
+            ui.combobox(name='dir_cwd', trigger=True, label=str(q.args.cwd),
+                choices=dirs),
+    ]

@@ -1,7 +1,7 @@
 import logging
 from h2o_wave import main, app, Q, ui, on, handle_on, copy_expando
 
-from movx.ui import setup_page, breadcrumbs, crash_report, dcps
+from movx.ui import setup_page, breadcrumbs, crash_report, dcps, jobs, settings
 
 
 # Set up logging
@@ -81,44 +81,6 @@ async def serve(q: Q):
 
     except Exception as error:
         await show_error(q, error=str(error))
-
-    """
-    q.page['sidebar-header'] = ui.header_card(
-        box=ui.box(zone='sidebar', size='0'),
-        title='Locations',
-        subtitle="",
-        #image='https://wave.h2o.ai/img/h2o-logo.svg',
-        items=[
-            ui.button(name='show_add_location', label='add')
-        ],
-        color='transparent'
-    )
-
-    for i,l in enumerate(locations_list()):
-        q.page['loc%s' % i] = l"""
-
-    """
-    def check_net_disk(d):
-        lines = subprocess.check_output(['net', 'use', d]).split(b'\r\n')
-        if "not found" not in lines[0]:
-            ret = {}
-            for l in lines:
-                kv = l.split(b'\t')
-                ret.update( { kv[0]: kv[1] } )
-            return ret
-
-    for d in get_drives():
-        # check network usage
-        is_net = check_net_disk(d[0])
-        if is_net is not None and is_net["Status"] != "Disconnected":
-            print("check %s" % d)
-            try:
-                print(os.stat(d))
-                dirs = [f.path for f in os.scandir(d) if f.is_dir()]
-                print(dirs)
-            except Exception as e:
-                print(e)
-    """
 
     await q.page.save()
 

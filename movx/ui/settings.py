@@ -6,6 +6,7 @@ from movx.ui.cards.settings import (
     locations_list_card,
     location_side_panel,
     location_del_dialog,
+    add_location_panel,
     db_utils,
     status_card,
 )
@@ -20,6 +21,9 @@ async def settings_layout(q: Q):
     q.page["db_utils"] = db_utils
 
     q.page["status_utils"] = status_card(q, status.get_all())
+
+    if q.args.dir_cwd or q.args.show_add_location:
+        add_location_panel(q)
 
     await q.page.save()
 
@@ -109,7 +113,7 @@ async def dbutils_del_all_locs(q):
 
 @on()
 async def dbutils_del_all_tasks(q):
-    db.clear(db.Task)
+    db.clear(db.Job)
     # todo: notification
     await q.page.save()
 
@@ -123,7 +127,7 @@ async def dbutils_del_all_dcps(q):
 
 @on()
 async def dbutils_del_all(q):
-    db.clear(db.Task)
+    db.clear(db.Job)
     db.clear(db.DCP)
     db.clear(db.Location)
     q.page["meta"].notification = "And now for something completely different!"
