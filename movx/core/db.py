@@ -1,12 +1,15 @@
 import uuid
 import time
 import inspect
-from typing import List, Optional
+import os
+import shutil
+import enum
+from typing import Set, List, Optional
 from pathlib import Path
 from contextlib import contextmanager
 from sqlalchemy_continuum import make_versioned
 
-from sqlalchemy import ForeignKey, JSON, create_engine, select, delete
+from sqlalchemy import ForeignKey, JSON, Enum, Table, Column, create_engine, select, delete
 from sqlalchemy.orm import (
     relationship,
     DeclarativeBase,
@@ -21,21 +24,20 @@ from sqlalchemy.orm import (
 
 db_path = Path.home() / ".movx" / "movx.db"
 
-# db_path.unlink()
+#db_path.unlink()
 
 db_url = "sqlite:///%s" % db_path.absolute()
 
+engine = None
+Session = None
+session = None
+session_factory = None
+
 make_versioned(user_cls=None)
 
-# Create the database engine and session
-engine = create_engine(db_url)
-
-session_factory = sessionmaker(bind=engine, expire_on_commit=False)
-
-Session = scoped_session(session_factory)
-
-session = Session()
-
+def del_db_file():
+    shutil.copyfile(str(db_path), str(db_path.parent / "backup.backupdb"))
+    os.remove(db_path)
 class Base(MappedAsDataclass, DeclarativeBase):
     """
     Base Class for DB Declarative Model
@@ -43,29 +45,45 @@ class Base(MappedAsDataclass, DeclarativeBase):
     Contain some useful function to make working with Model Object easier, like in Django
     """
 
-    __allow_unmapped__ = False
+    #__allow_unmapped__ = False
 
     def add(self):
-        with session:
+        """
+        Add this object to the DB
+        """
+        with Session() as session:
             session.add(self)
             session.commit()
 
     def delete(self):
-        with session:
+        """
+        Delete this object from the DB
+        """
+        with Session() as session:
             session.execute(delete(self.__class__).where(self.__class__.id == self.id))
             session.commit()
 
-    
     def update(self, **args):
-        with session:
+        """
+        update this object values according to the paremeters passed to this function
+        """
+        with Session() as session:
             session.execute(
                 self.__table__.update().where(self.__class__.id == self.id).values(args)
             )
             session.commit()
-    
+
     @classmethod
     def get(self=None, id=None):
-        with session:
+        """
+        Hybrid method to get from the DB:
+
+        - Called on an instance, it return a fresh version of this object
+
+        - Called on a Class get all the objects from this object table
+        OR get a particular object if the id parameter is provided
+        """
+        with Session() as session:
             if inspect.isclass(self):
                 if id:
                     return session.get(self, id)
@@ -76,34 +94,75 @@ class Base(MappedAsDataclass, DeclarativeBase):
 
     @classmethod
     def get_all(cls):
-        with session:
-            return Session.scalars(select(cls)).all()
+        """
+        get all objects of this same class from the DB
+        """
+        with Session() as session:
+            return session.scalars(select(cls), execution_options={"prebuffer_rows": True}).all()
 
     @classmethod
-    def clear_all(cls):
-        with session:
+    def clear(cls):
+        """
+        Clear this object table (delete all the rows)
+        """
+        with Session() as session:
             session.query(cls).delete()
             session.commit()
 
+    @classmethod
+    def filter(cls, expr):
+        """
+        Filter query on this object class
+        """
+        with Session() as session:
+            return session.scalars(select(cls).filter(expr), execution_options={"prebuffer_rows": True})
+
     @contextmanager
     def fresh(self):
-        with session:
+        """
+        Context manager that get a fresh version of this very object, yield, and commit it.
+        """
+        with Session() as session:
             t = session.query(self.__class__).get(self.id)
             yield t
             session.commit()
 
-class Status(Base):
-    __tablename__ = "status"
+class User(Base):
+    """
+    Represent a user
+    """
+
+    __tablename__ = "user"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
-    status_id: Mapped[int] = mapped_column(
-        ForeignKey("status.id"), init=False, nullable=True
-    )
+    name: Mapped[str] = mapped_column(unique=True)
+    avatar: Mapped[Optional[str]] = mapped_column()
+
+class Tags(Base):
+    """
+    A Generic Tag 
+    """
+    __tablename__ = "tags"
+    id: Mapped[int] = mapped_column(init=False, primary_key=True)
     name: Mapped[str] = mapped_column(unique=True)
     color: Mapped[str] = mapped_column(unique=True)
-    type: Mapped[Optional[str]] = mapped_column(default="")
-    nexts: Mapped[List["Status"]] = relationship(default_factory=list)
+class Status(Base):
+    """
+    A DCP status
+    """
+    __tablename__ = "statuses"
+    id: Mapped[int] = mapped_column(init=False, primary_key=True)
+    name: Mapped[str] = mapped_column(unique=True)
+    color: Mapped[str] = mapped_column(unique=True)
+
+class LocationType(enum.Enum):
+    Local = 1
+    NetShare = 2
 
 class Location(Base):
+    """
+    A Location is a folder where MovX should look for DCP's
+    """
+
     __tablename__ = "location"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
     path: Mapped[str] = mapped_column(unique=True)
@@ -112,11 +171,11 @@ class Location(Base):
         insert_default=time.time(), default=time.time()
     )
     netshare: Mapped[Optional[str]] = mapped_column(default="")
-    type: Mapped[Optional[str]] = mapped_column(default="")
+    type: Mapped[Optional[LocationType]] = mapped_column(default=LocationType.Local)
 
-    #dcps: Mapped[List["DCP"]] = relationship(
+    # dcps: Mapped[List["DCP"]] = relationship(
     #    back_populates="location", default_factory=list
-    #)
+    # )
 
     @validates("path")
     def validate_path(self, key, path):
@@ -124,34 +183,88 @@ class Location(Base):
             raise ValueError("Path %s do not exist" % Path(path).absolute())
         return path
 
+    def dcps(self):
+        """
+        Get all DCP's from this location
+        """
+        with Session() as session:
+            return session.scalars(select(DCP).where(DCP.location == self)).all()
+
+movies_tags = Table(
+    "movies_tags",
+    Base.metadata,
+    Column("movie_id", ForeignKey("movie.id")),
+    Column("tag_id", ForeignKey("tags.id")),
+)
+
 class Movie(Base):
+    """
+    A Movie can have one or more DCP's
+    """
+
     __tablename__ = "movie"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
     title: Mapped[str]
-    #dcps: Mapped[List["DCP"]] = relationship(
+    # dcps: Mapped[List["DCP"]] = relationship(
     #    back_populates="movie", default_factory=list
+    # )
+    #tags_id: Mapped[List[int]] = mapped_column( 
+    #     init=False, default_factory=list
     #)
 
-    status_id: Mapped[int] = mapped_column(
-        ForeignKey(Status.id), init=False, nullable=True
-    )
+    tags: Mapped[List["Tags"]] = relationship(init=False, secondary=movies_tags, lazy="selectin")
 
-    status: Mapped[Optional["Status"]] = relationship(default=None, lazy="selectin")
+    def dcps(self):
+        """
+        Get all the movie's dcp
+        """
+        with Session() as session:
+            return session.scalars(select(DCP).where(DCP.movie == self), execution_options={"prebuffer_rows": True}).all()
+
+    def ovs(self):
+        """
+        Get all the OV's related to this movie
+        """
+        ovs = []
+        for dcp in self.dcps():
+            if dcp.package_type == "OV":
+                ovs.append(dcp)
+        return ovs
+
+    def vfs(self):
+        """
+        Get all the VF's related to this movie
+        """
+        vfs = []
+        for dcp in self.dcps():
+            if dcp.package_type == "VF":
+                vfs.append(dcp)
+        return vfs
+
+dcps_tags = Table(
+    "dcps_tags",
+    Base.metadata,
+    Column("dcp_id", ForeignKey("dcp.id")),
+    Column("tag_id", ForeignKey("tags.id")),
+)
 
 class DCP(Base):
+    """
+    Represent a Digitel Cinema Package
+    """
+
     __tablename__ = "dcp"
     __versioned__ = {}
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
 
     uid: Mapped[uuid.UUID] = mapped_column(init=False, unique=True)
 
-
     location_id: Mapped[int] = mapped_column(ForeignKey(Location.id), init=False)
     movie_id: Mapped[int] = mapped_column(
         ForeignKey(Movie.id), init=False, nullable=True
     )
-    status_id: Mapped[int] = mapped_column(
-        ForeignKey(Status.id), init=False, nullable=True
+    tags_id: Mapped[int] = mapped_column(
+        ForeignKey(Tags.id), init=False, nullable=True
     )
 
     path: Mapped[str] = mapped_column(unique=True)
@@ -159,13 +272,13 @@ class DCP(Base):
     location: Mapped["Location"] = relationship(Location, lazy="selectin")
 
     movie: Mapped[Optional["Movie"]] = relationship(default=None, lazy="selectin")
-    status: Mapped[Optional["Status"]] = relationship(default=None, lazy="selectin")
+    tags: Mapped[List["Tags"]] = relationship(init=False, secondary=dcps_tags, lazy="selectin")
 
     title: Mapped[str] = mapped_column(default="")
     package_type: Mapped[Optional[str]] = mapped_column(default="")
     kind: Mapped[Optional[str]] = mapped_column(default="")
     size: Mapped[Optional[int]] = mapped_column(default=0)
-    owner: Mapped[Optional[str]] = mapped_column(default="")
+    notes: Mapped[Optional[str]] = mapped_column(default="")
 
     @validates("path")
     def validate_path(self, key, path):
@@ -176,87 +289,99 @@ class DCP(Base):
     def __post_init__(self):
         self.uid = uuid.uuid5(uuid.NAMESPACE_X500, str(self.path))
 
+    def jobs(self, type=None):
+        with Session() as session:
+            if type:
+                return session.scalars(
+                    select(Job)
+                    .where(Job.dcp == self, Job.type == type,)
+                    .order_by(Job.finished_at.desc()),
+                    execution_options={"prebuffer_rows": True}
+                ).all()
+            else:
+                return session.scalars(
+                    select(Job).where(Job.dcp == self).order_by(Job.finished_at.desc()),
+                    execution_options={"prebuffer_rows": True}
+                ).all()
+
+class JobStatus(enum.Enum):
+    errored = 0
+    created = 1
+    started = 2
+    running = 3
+    finished = 4
+    cancelled = 5
+
+class JobType(enum.Enum):
+    test = 0
+    parse = 1
+    probe = 2
+    check = 3
+    copy = 4
 
 class Job(Base):
+    """
+    Represent a task that take time and is related to a DCP, and that has been created by someone
+    """
+
     __tablename__ = "job"
 
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
 
     dcp_id: Mapped[int] = mapped_column(ForeignKey(DCP.id), init=False, nullable=True)
-    dcp: Mapped["DCP"] = relationship(DCP, lazy="selectin")
+    author_id: Mapped[int] = mapped_column(ForeignKey(User.id), init=False, nullable=True)
 
-    name: Mapped[str]
-    status: Mapped[str]
-    type: Mapped[str]
+    dcp: Mapped[DCP] = relationship(DCP, lazy="selectin")
+    author: Mapped[User] = relationship(User, lazy="selectin")
+
+    type: Mapped[JobType]
+    status: Mapped[JobStatus] = mapped_column(default=JobStatus.created)
 
     description: Mapped[Optional[str]] = mapped_column(default="")
     progress: Mapped[Optional[int]] = mapped_column(insert_default=-1, default=-1)
-    author: Mapped[Optional[str]] = mapped_column(insert_default="", default="")
     elapsed_time_s: Mapped[Optional[int]] = mapped_column(insert_default=0, default=0)
     created_at: Mapped[Optional[float]] = mapped_column(
         insert_default=time.time(), default=time.time()
     )
-    last_update: Mapped[Optional[float]] = mapped_column(
-        insert_default=time.time(), default=time.time()
+    started_at: Mapped[Optional[float]] = mapped_column(
+        insert_default=-1, default=-1
     )
-    timestamp: Mapped[Optional[float]] = mapped_column(
-        insert_default=time.time(), default=time.time()
+    finished_at: Mapped[Optional[float]] = mapped_column(
+        insert_default=-1, default=-1
     )
-    eta: Mapped[Optional[int]] = mapped_column(insert_default=-1, default=-1)
+    
     result = mapped_column(JSON, insert_default={}, default={})
+
+    def duration(self):
+        if self.finished_at > 0:
+            return round(self.finished_at - self.started_at)
+        else:
+            return round(time.time() - self.started_at)
+        
+    def eta(self):
+        prog = round(self.progress, 2)
+        if prog >= 1:
+            return 0
+        elif prog > 0:
+            return (1 - prog) / ((prog) / self.duration()) + 1
+        else:
+            return -1
+        
+    def is_running(self):
+        return True if self.status() == "running" else False
 
 
 configure_mappers()
 
+engine = create_engine(db_url)
+Session = sessionmaker(bind=engine, expire_on_commit=False)
+Scoped_Session = scoped_session(session_factory)
+
 Base.metadata.create_all(engine)
 
+def reset_db():
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
 
-def clear(cls):
-    with session:
-        session.query(cls).delete()
-        session.commit()
-
-
-"""
-# Create a Location object
-location = Location(path='/path/to/locsdati4sad2')
-
-# Create a DCP object with the Location
-dcp = DCP(location=location)
-
-# Create several CheckAction objects and add them to the DCP
-action1 = CheckTask(name='Check 1', timestamp=datetime.now())
-action2 = CheckTask(name='Check 2', timestamp=datetime.now())
-action3 = CheckTask(name='Check 3', timestamp=datetime.now())
-
-dcp.tasks.append(action1)
-dcp.tasks.append(action2)
-dcp.tasks.append(action3)
-
-with session:
-    # Add the objects to the session and commit the changes
-    session.add(dcp)
-    session.commit()
-
-
-# Retrieve the first DCP object from the database
-dcp = session.query(DCP).first()
-
-# Print the DCP's ID and the location's path
-print(f'DCP ID: {dcp.id}')
-print(f'Location: {dcp.location.path}')
-
-# Print the details of each CheckAction in the DCP
-for action in dcp.actions:
-    if isinstance(action, CheckAction):
-        print(f'Action ID: {action.id}')
-        print(f'Name: {action.name}')
-        print(f'Timestamp: {action.timestamp}')
-        print(f'Limit: {action.limit}')
-        print('---')
-
-"""
-
-
-def get_movies():
-    return Session.scalars(select(Movie)).all()
+anonymous = User("anonymous", avatar="anonymous")
+#anonymous.add()

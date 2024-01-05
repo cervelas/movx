@@ -1,16 +1,9 @@
 import webbrowser
 
 from pathlib import Path
-from movx import start_waved
-from movx import UvicornServer
-import webview
+from movx import start_serve, start_app
 import click
-import uvicorn
 from movx.core import dcps, db, jobs, locations
-
-
-def start_serve(log_level="warning", reload=False):
-    uvicorn.run("movx.ui.main:main", log_level=log_level, reload=reload)
 
 
 @click.group()
@@ -19,37 +12,26 @@ def main():
 
 
 @main.command()
-def serve():
-    start_waved()
-    print("Starting application")
+def serve(dev):
     start_serve()
 
 
 @main.command()
-def dev():
-    start_waved()
-    print("Starting application in dev mode")
-    webbrowser.open("http://127.0.0.1:10101/")
-    start_serve(reload=True)
-
-
-@main.command()
 def app():
-    start_waved()
-    print("Starting application in app mode")
-
-    config = uvicorn.Config(
-        "movx.ui.main:main", port=8000, log_level="warning", reload=True
-    )
-    instance = UvicornServer(config=config)
-    instance.start()
-
-    webview.create_window("MOVX", "http://127.0.0.1:10101/")
-    webview.start(debug=True)
+    start_app()
 
 
 @main.command()
-def scan():
+@click.option("--deldb", help="delete the DB prior to launch the app", is_flag=True)
+def dev(deldb):
+    if deldb:
+        db.del_db_file()
+    start_serve(reload=True, browse=True)
+
+
+@main.command()
+@click.argument("file")
+def scan(file):
     locations.scan_all()
     # movx.scan()
     # movx.pretty_print()
@@ -71,14 +53,9 @@ def check(path):
     else:
         dcps.check()
 
-    # movx.update_locations("NEW", path)
-    # movx.scan()
-    # movx.check()
-    # movx.pretty_print()
-
 
 @main.command()
-@click.argument("path")
+@click.argument("path", default="all")
 def parse(path):
     if path == "all":
         dcps.parse_all()
