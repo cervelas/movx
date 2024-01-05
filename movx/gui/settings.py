@@ -47,10 +47,12 @@ async def settings(q: Q):
 
     await q.page.save()
 
+
 @on()
 async def show_add_location(q):
     add_location_panel(q)
     await q.page.save()
+
 
 @on()
 async def add_location(q: Q, parse=True):
@@ -70,6 +72,7 @@ async def add_location(q: Q, parse=True):
         q.page["meta"].side_panel.items[1].textbox.error = "Error: %s" % str(e)
         await q.page.save()
         raise e
+
 
 @on()
 async def show_update_location(q: Q):
@@ -203,6 +206,7 @@ async def dbutils_del_all(q):
     # todo: notification
     await q.page.save()
     await settings(q)
+
 
 @on()
 async def dbutils_reset_db(q: Q):

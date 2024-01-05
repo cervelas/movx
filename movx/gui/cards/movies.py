@@ -4,7 +4,6 @@ from movx.core.db import Tags
 
 
 def all_movies_table(movies):
-
     columns = [
         ui.table_column(
             name="Title",
@@ -12,7 +11,7 @@ def all_movies_table(movies):
             searchable=True,
             filterable=True,
             min_width="500px",
-            link=True
+            link=True,
         ),
         ui.table_column(
             name="Tags",
@@ -20,10 +19,7 @@ def all_movies_table(movies):
             filterable=True,
             cell_type=ui.tag_table_cell_type(
                 name="tags",
-                tags=[
-                    ui.tag(label=tag.name, color=tag.color)
-                    for tag in Tags.get_all()
-                ]
+                tags=[ui.tag(label=tag.name, color=tag.color) for tag in Tags.get_all()]
                 + [ui.tag(label="N/A", color="$CCCCCC")],
             ),
         ),
@@ -39,7 +35,6 @@ def all_movies_table(movies):
 
     rows = []
     for movie in movies:
-
         tags = []
         if movie.tags:
             tags = movie.tags
@@ -54,12 +49,12 @@ def all_movies_table(movies):
                 ],
             )
         )
-    
+
     return ui.table(
-                name="movies_table",
-                columns=columns,
-                rows=rows,
-                downloadable=True,
-                resettable=True,
-                height="calc(100vh - 90px)",
-            )
+        name="movies_table",
+        columns=columns,
+        rows=rows,
+        downloadable=True,
+        resettable=True,
+        height="calc(100vh - 90px)",
+    )

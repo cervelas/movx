@@ -1,5 +1,3 @@
-
-
 from collections.abc import MutableMapping, MutableSequence
 
 
@@ -42,19 +40,21 @@ DEFAULT_CHECK_PROFILE = {
 }
 
 
-def _flat_gen(d, parent_key = None):
+def _flat_gen(d, parent_key=None):
     for k, v in d.items():
         new_key = parent_key + (k,) if parent_key else (k,)
         if isinstance(v, MutableMapping):
             yield from flatten(v, new_key).items()
         elif isinstance(v, MutableSequence):
-            v = { str(i): d for i, d in enumerate(v) }
+            v = {str(i): d for i, d in enumerate(v)}
             yield from flatten(v, new_key).items()
         else:
             yield new_key, v
 
-def flatten(dic: MutableMapping, parent_key = None):
+
+def flatten(dic: MutableMapping, parent_key=None):
     return dict(_flat_gen(dic or {}, parent_key))
+
 
 def finditem(dic, key, value):
     ret = []
@@ -62,9 +62,9 @@ def finditem(dic, key, value):
         ret.append(dic)
     else:
         for k, v in dic.items():
-            if isinstance(v,dict):
+            if isinstance(v, dict):
                 ret.extend(finditem(v, key, value))
-            if isinstance(v,list):
+            if isinstance(v, list):
                 for e in v:
                     ret.extend(finditem(e, key, value))
     return ret

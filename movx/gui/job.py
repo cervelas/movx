@@ -24,9 +24,9 @@ async def poll_job(q: Q, job: Job):
 
         await q.page.save()
 
+
 @on("#job/{id:int}")
 async def task_detail_layout(q: Q, id: int):
-
     job = Job.get(id)
 
     if job:
@@ -37,24 +37,23 @@ async def task_detail_layout(q: Q, id: int):
                 ui.inline(
                     justify="start",
                     items=[
-                        ui.button(
-                            name="#jobs", label="Back", icon="ChevronLeftMed"
+                        ui.button(name="#jobs", label="Back", icon="ChevronLeftMed"),
+                        ui.text_xl(
+                            'Task %s <a href="#dcp/%s">%s</a> %s'
+                            % (job.type, job.dcp.id, job.dcp.title, job.status)
                         ),
-                        ui.text_xl('Task %s <a href="#dcp/%s">%s</a> %s' % (job.type, job.dcp.id, job.dcp.title, job.status)),
-                        #ui.button(
+                        # ui.button(
                         #    name="#dcp/%s" % job.dcp.id,
                         #    label="%s" % job.dcp.title,
                         #    icon="VideoSearch",
-                        #),
+                        # ),
                     ],
                 ),
-            ]
+            ],
         )
         q.page["job_progress_%s" % job.id] = ui.form_card(
-            box=ui.box("content", size=0),
-            items = job_progress(job)
+            box=ui.box("content", size=0), items=job_progress(job)
         )
-        
 
         job_cards(q, job)
         add_raw_result_card(q, job.result)
@@ -65,6 +64,5 @@ async def task_detail_layout(q: Q, id: int):
         q.page["not-found"] = ui.form_card(
             box="content", items=[ui.text("Task %s not found" % id)]
         )
-    
-    await q.page.save()
 
+    await q.page.save()

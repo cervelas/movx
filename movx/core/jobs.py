@@ -57,8 +57,8 @@ class JobTask(threading.Thread):
             make_transient(self.job)
 
             result = self.func(self.job, **self.args)
-            #JobTask.start_poll()
-            
+            # JobTask.start_poll()
+
             while not self.is_cancelled.wait(timeout=1):
                 if self.job.finished.wait(timeout=0.1):
                     with self.job.fresh() as j:
@@ -69,14 +69,13 @@ class JobTask(threading.Thread):
                             finished_at=time.time(),
                         )
                     break
-                
+
             if self.is_cancelled.is_set():
                 with self.job.fresh() as j:
                     j.update(
                         status=db.JobStatus.cancelled,
                         finished_at=time.time(),
                     )
-
 
             # self.session.execute( update(Task).where(Task.id == self.task.id).values(progress=1) )
         except Exception as e:
@@ -99,7 +98,7 @@ class JobTask(threading.Thread):
                         eta = 0
                     elif prog > 0:
                         eta = (1 - prog) / ((prog) / job.timestamp) + 1
-                    #job.update(eta=eta, timestamp=time.time())
+                    # job.update(eta=eta, timestamp=time.time())
 
 
 def ongoing():

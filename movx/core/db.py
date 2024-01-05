@@ -9,7 +9,16 @@ from pathlib import Path
 from contextlib import contextmanager
 from sqlalchemy_continuum import make_versioned
 
-from sqlalchemy import ForeignKey, JSON, Enum, Table, Column, create_engine, select, delete
+from sqlalchemy import (
+    ForeignKey,
+    JSON,
+    Enum,
+    Table,
+    Column,
+    create_engine,
+    select,
+    delete,
+)
 from sqlalchemy.orm import (
     relationship,
     DeclarativeBase,
@@ -24,7 +33,7 @@ from sqlalchemy.orm import (
 
 db_path = Path.home() / ".movx" / "movx.db"
 
-#db_path.unlink()
+# db_path.unlink()
 
 db_url = "sqlite:///%s" % db_path.absolute()
 
@@ -35,9 +44,12 @@ session_factory = None
 
 make_versioned(user_cls=None)
 
+
 def del_db_file():
     shutil.copyfile(str(db_path), str(db_path.parent / "backup.backupdb"))
     os.remove(db_path)
+
+
 class Base(MappedAsDataclass, DeclarativeBase):
     """
     Base Class for DB Declarative Model
@@ -45,7 +57,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
     Contain some useful function to make working with Model Object easier, like in Django
     """
 
-    #__allow_unmapped__ = False
+    # __allow_unmapped__ = False
 
     def add(self):
         """
@@ -98,7 +110,9 @@ class Base(MappedAsDataclass, DeclarativeBase):
         get all objects of this same class from the DB
         """
         with Session() as session:
-            return session.scalars(select(cls), execution_options={"prebuffer_rows": True}).all()
+            return session.scalars(
+                select(cls), execution_options={"prebuffer_rows": True}
+            ).all()
 
     @classmethod
     def clear(cls):
@@ -115,7 +129,9 @@ class Base(MappedAsDataclass, DeclarativeBase):
         Filter query on this object class
         """
         with Session() as session:
-            return session.scalars(select(cls).filter(expr), execution_options={"prebuffer_rows": True})
+            return session.scalars(
+                select(cls).filter(expr), execution_options={"prebuffer_rows": True}
+            )
 
     @contextmanager
     def fresh(self):
@@ -127,6 +143,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
             yield t
             session.commit()
 
+
 class User(Base):
     """
     Represent a user
@@ -137,26 +154,33 @@ class User(Base):
     name: Mapped[str] = mapped_column(unique=True)
     avatar: Mapped[Optional[str]] = mapped_column()
 
+
 class Tags(Base):
     """
-    A Generic Tag 
+    A Generic Tag
     """
+
     __tablename__ = "tags"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
     name: Mapped[str] = mapped_column(unique=True)
     color: Mapped[str] = mapped_column(unique=True)
+
+
 class Status(Base):
     """
     A DCP status
     """
+
     __tablename__ = "statuses"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
     name: Mapped[str] = mapped_column(unique=True)
     color: Mapped[str] = mapped_column(unique=True)
 
+
 class LocationType(enum.Enum):
     Local = 1
     NetShare = 2
+
 
 class Location(Base):
     """
@@ -190,12 +214,14 @@ class Location(Base):
         with Session() as session:
             return session.scalars(select(DCP).where(DCP.location == self)).all()
 
+
 movies_tags = Table(
     "movies_tags",
     Base.metadata,
     Column("movie_id", ForeignKey("movie.id")),
     Column("tag_id", ForeignKey("tags.id")),
 )
+
 
 class Movie(Base):
     """
@@ -208,18 +234,23 @@ class Movie(Base):
     # dcps: Mapped[List["DCP"]] = relationship(
     #    back_populates="movie", default_factory=list
     # )
-    #tags_id: Mapped[List[int]] = mapped_column( 
+    # tags_id: Mapped[List[int]] = mapped_column(
     #     init=False, default_factory=list
-    #)
+    # )
 
-    tags: Mapped[List["Tags"]] = relationship(init=False, secondary=movies_tags, lazy="selectin")
+    tags: Mapped[List["Tags"]] = relationship(
+        init=False, secondary=movies_tags, lazy="selectin"
+    )
 
     def dcps(self):
         """
         Get all the movie's dcp
         """
         with Session() as session:
-            return session.scalars(select(DCP).where(DCP.movie == self), execution_options={"prebuffer_rows": True}).all()
+            return session.scalars(
+                select(DCP).where(DCP.movie == self),
+                execution_options={"prebuffer_rows": True},
+            ).all()
 
     def ovs(self):
         """
@@ -241,12 +272,14 @@ class Movie(Base):
                 vfs.append(dcp)
         return vfs
 
+
 dcps_tags = Table(
     "dcps_tags",
     Base.metadata,
     Column("dcp_id", ForeignKey("dcp.id")),
     Column("tag_id", ForeignKey("tags.id")),
 )
+
 
 class DCP(Base):
     """
@@ -263,16 +296,16 @@ class DCP(Base):
     movie_id: Mapped[int] = mapped_column(
         ForeignKey(Movie.id), init=False, nullable=True
     )
-    tags_id: Mapped[int] = mapped_column(
-        ForeignKey(Tags.id), init=False, nullable=True
-    )
+    tags_id: Mapped[int] = mapped_column(ForeignKey(Tags.id), init=False, nullable=True)
 
     path: Mapped[str] = mapped_column(unique=True)
 
     location: Mapped["Location"] = relationship(Location, lazy="selectin")
 
     movie: Mapped[Optional["Movie"]] = relationship(default=None, lazy="selectin")
-    tags: Mapped[List["Tags"]] = relationship(init=False, secondary=dcps_tags, lazy="selectin")
+    tags: Mapped[List["Tags"]] = relationship(
+        init=False, secondary=dcps_tags, lazy="selectin"
+    )
 
     title: Mapped[str] = mapped_column(default="")
     package_type: Mapped[Optional[str]] = mapped_column(default="")
@@ -294,15 +327,19 @@ class DCP(Base):
             if type:
                 return session.scalars(
                     select(Job)
-                    .where(Job.dcp == self, Job.type == type,)
+                    .where(
+                        Job.dcp == self,
+                        Job.type == type,
+                    )
                     .order_by(Job.finished_at.desc()),
-                    execution_options={"prebuffer_rows": True}
+                    execution_options={"prebuffer_rows": True},
                 ).all()
             else:
                 return session.scalars(
                     select(Job).where(Job.dcp == self).order_by(Job.finished_at.desc()),
-                    execution_options={"prebuffer_rows": True}
+                    execution_options={"prebuffer_rows": True},
                 ).all()
+
 
 class JobStatus(enum.Enum):
     errored = 0
@@ -312,12 +349,14 @@ class JobStatus(enum.Enum):
     finished = 4
     cancelled = 5
 
+
 class JobType(enum.Enum):
     test = 0
     parse = 1
     probe = 2
     check = 3
     copy = 4
+
 
 class Job(Base):
     """
@@ -329,7 +368,9 @@ class Job(Base):
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
 
     dcp_id: Mapped[int] = mapped_column(ForeignKey(DCP.id), init=False, nullable=True)
-    author_id: Mapped[int] = mapped_column(ForeignKey(User.id), init=False, nullable=True)
+    author_id: Mapped[int] = mapped_column(
+        ForeignKey(User.id), init=False, nullable=True
+    )
 
     dcp: Mapped[DCP] = relationship(DCP, lazy="selectin")
     author: Mapped[User] = relationship(User, lazy="selectin")
@@ -343,13 +384,9 @@ class Job(Base):
     created_at: Mapped[Optional[float]] = mapped_column(
         insert_default=time.time(), default=time.time()
     )
-    started_at: Mapped[Optional[float]] = mapped_column(
-        insert_default=-1, default=-1
-    )
-    finished_at: Mapped[Optional[float]] = mapped_column(
-        insert_default=-1, default=-1
-    )
-    
+    started_at: Mapped[Optional[float]] = mapped_column(insert_default=-1, default=-1)
+    finished_at: Mapped[Optional[float]] = mapped_column(insert_default=-1, default=-1)
+
     result = mapped_column(JSON, insert_default={}, default={})
 
     def duration(self):
@@ -357,7 +394,7 @@ class Job(Base):
             return round(self.finished_at - self.started_at)
         else:
             return round(time.time() - self.started_at)
-        
+
     def eta(self):
         prog = round(self.progress, 2)
         if prog >= 1:
@@ -366,7 +403,7 @@ class Job(Base):
             return (1 - prog) / ((prog) / self.duration()) + 1
         else:
             return -1
-        
+
     def is_running(self):
         return True if self.status() == "running" else False
 
@@ -379,9 +416,11 @@ Scoped_Session = scoped_session(session_factory)
 
 Base.metadata.create_all(engine)
 
+
 def reset_db():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
+
 anonymous = User("anonymous", avatar="anonymous")
-#anonymous.add()
+# anonymous.add()

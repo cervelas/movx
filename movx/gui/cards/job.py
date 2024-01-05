@@ -7,6 +7,7 @@ from h2o_wave import ui
 from movx.core.db import JobType, JobStatus
 from movx.gui import full_table, convert_size, md_table, flat, make_md_table
 
+
 def job_cards(q, job):
     if job.status == JobStatus.finished:
         if job.type == JobType.check:
@@ -17,6 +18,7 @@ def job_cards(q, job):
         elif job.type == JobType.probe:
             add_probe_cards(q, job.result)
 
+
 def job_progress(job):
     st = datetime.fromtimestamp(job.started_at)
 
@@ -24,11 +26,11 @@ def job_progress(job):
 
     if job.finished_at > 0:
         ft = datetime.fromtimestamp(job.finished_at)
-        items += [ ui.text_s("Finished @ %s" % ft.strftime("%m/%d/%Y %H:%M:%S")) ]
+        items += [ui.text_s("Finished @ %s" % ft.strftime("%m/%d/%Y %H:%M:%S"))]
     elif job.progress > 0:
-        items += [ ui.text_s("ETA %s" % timedelta(seconds=round(job.eta())))]
+        items += [ui.text_s("ETA %s" % timedelta(seconds=round(job.eta())))]
 
-    items += [ ui.text_s("Duration %s" % timedelta(seconds=job.duration())) ]
+    items += [ui.text_s("Duration %s" % timedelta(seconds=job.duration()))]
 
     return [
         ui.inline(
@@ -42,34 +44,41 @@ def job_progress(job):
         ),
     ]
 
+
 def add_parse_cards(q, parse_report):
     add_am_cards(q, parse_report)
     add_pkl_cards(q, parse_report)
     add_cpl_cards(q, parse_report)
 
+
 def add_probe_cards(q, parse_report):
     add_reels_probe_cards(q, parse_report)
 
+
 def add_raw_result_card(q, result):
-    q.page.add("raw_parse_card", ui.form_card(
-        box=ui.box("content", size=0),
-        items = [
-            ui.text_xl("Raw results"),
-            ui.expander(
-                name="raw_result_tbl_exp",
-                label="Raw Result Table",
-                items=[full_table(flat(result))],
-            ),
-            ui.expander(
-                name="raw_result_txt_exp",
-                label="Raw Result Text",
-                items=[
-                    ui.markup(
-                        name="raw_result_mtxt", content="<pre>%s</pre>" % yaml.dump(result, indent=2)
-                    ),
-                ],
-            ),
-        ])
+    q.page.add(
+        "raw_parse_card",
+        ui.form_card(
+            box=ui.box("content", size=0),
+            items=[
+                ui.text_xl("Raw results"),
+                ui.expander(
+                    name="raw_result_tbl_exp",
+                    label="Raw Result Table",
+                    items=[full_table(flat(result))],
+                ),
+                ui.expander(
+                    name="raw_result_txt_exp",
+                    label="Raw Result Text",
+                    items=[
+                        ui.markup(
+                            name="raw_result_mtxt",
+                            content="<pre>%s</pre>" % yaml.dump(result, indent=2),
+                        ),
+                    ],
+                ),
+            ],
+        ),
     )
 
 
@@ -89,13 +98,16 @@ def add_pkl_cards(q, parse_report):
             # assets.append(ui.text_l(a["OriginalFileName"]))
             # assets.append(ui.text_m(a.get("AnnotationText", "")))
             # assets.append(ui.separator(label=''))
-        q.page.add("pkl_infos_" + pkl["FileName"], ui.form_card(
-            box=ui.box("content", size=0),
-            items = [   ui.text_xl("Packing List"),
-                        # ui.text_xl(pkl["FileName"]),
-                        ui.text_s(pkl["FilePath"]), ]
+        q.page.add(
+            "pkl_infos_" + pkl["FileName"],
+            ui.form_card(
+                box=ui.box("content", size=0),
+                items=[
+                    ui.text_xl("Packing List"),
+                    # ui.text_xl(pkl["FileName"]),
+                    ui.text_s(pkl["FilePath"]),
+                ]
                 + assets
-                
                 + [
                     ui.expander(
                         name="pkl_sign_expander",
@@ -111,119 +123,129 @@ def add_pkl_cards(q, parse_report):
                         name="pkl_raw_expander",
                         label="Raw PKL Data",
                         items=[full_table(flat(infos))],
-                    )
-                ]
-            )
-        )
-
-def video_asset_details(asset):
-    items = [ 
-            ui.stats(justify='between',
-                inset=True,
-                items= [
-                    ui.stat(
-                        label="Asset",
-                        value=asset.get("EssenceType"),
-                        icon="ImageCrosshair",
-                        caption="Aspect Ratio %s" % asset.get("ScreenAspectRatio"),
-                    ),
-                    ui.stat(
-                        label="Entry Point",
-                        value="%s" % asset.get("TimeCodeIn"),
-                        #icon="ScreenTime",
-                        caption="%s (CPL %s) Frames" % (asset.get("EntryPoint"), asset.get("CPLEntryPoint")),
-                    ),
-                    ui.stat(
-                        label="Out Point",
-                        value="%s" % asset.get("TimeCodeOut"),
-                        #icon="ImageCrosshair",
-                        caption="%s (CPL %s) Frames" % (asset.get("CPLOutPoint"), asset.get("CPLOutPoint")),
-                    ),
-                    ui.stat(
-                        label="Duration",
-                        value="%s" % asset.get("TimeCodeDuration"),
-                        #icon="ImageCrosshair",
-                        caption="%s (Intr. %s) Frames" % (asset.get("Duration"), asset.get("IntrinsicDuration")),
-                    ),
-                    ui.stat(
-                        label="Framerate",
-                        value="%s FPS" % asset.get("FrameRate"),
-                        #icon="ImageCrosshair",
-                        caption="Edite Rate %s FPS" % asset.get("EditRate"),
-                    ),
-                ]
-            )
-        ]
-    probe = asset.get("Probe")
-    if probe:  
-        items += [
-            ui.text_l("Probe Summary"),
-            ui.stats(justify='between',
-                items=[
-                ui.stat(
-                    label="Type",
-                    value="%s" % probe.get("LabelSetType"),
-                    #icon="ImageCrosshair",
-                    #caption="Company %s" % probe.get("CompanyName"),
-                ),
-                ui.stat(
-                    label="Aspect Ratio",
-                    value="%s" % probe.get("AspectRatio"),
-                    #icon="ImageCrosshair",
-                    #caption="Aspect Ratio %s" % probe.get("ScreenAspectRatio"),
-                ),
-                ui.stat(
-                    label="Average BitRate",
-                    value="%s Mb/s" % probe.get("AverageBitRate"),
-                    #icon="ScreenTime",
-                    caption="Max. %s Mb/s" % probe.get("MaxBitRate")
-                ),
-                ui.stat(
-                    label="Encoder",
-                    value="%s" % probe.get("ProductName"),
-                    #icon="ImageCrosshair",
-                    caption="%s" % (probe.get("ProductVersion")),
-                ),
-                ui.stat(
-                    label="Resolution",
-                    value="%s" % probe.get("Resolution"),
-                    #icon="ImageCrosshair",
-                    #caption="%s" % (probe.get("ProductVersion")),
-                ),
-                ui.stat(
-                    label="Container Duration",
-                    value="%s Frames" % probe.get("ContainerDuration"),
-                    #icon="ImageCrosshair",
-                    #caption="%s (Intr. %s) Frames" % (probe.get("Duration"), probe.get("IntrinsicDuration")),
-                ),
-                ui.stat(
-                    label="Edite Rate",
-                    value="%s FPS" % probe.get("EditRate"),
-                    #icon="ImageCrosshair",
-                    caption="Sample Rate %s FPS" % probe.get("SampleRate"),
-                ),
-            ])
-        ]
-    
-    items += [ ui.expander(
-                name="raw_probe_result_txt_exp",
-                label="Raw Probe Results",
-                items=[
-                    ui.markup(
-                        name="raw_probe_result_txt", content="<pre>%s</pre>" % yaml.dump(probe, indent=2)
                     ),
                 ],
-            ) ]
+            ),
+        )
+
+
+def video_asset_details(asset):
+    items = [
+        ui.stats(
+            justify="between",
+            inset=True,
+            items=[
+                ui.stat(
+                    label="Asset",
+                    value=asset.get("EssenceType"),
+                    icon="ImageCrosshair",
+                    caption="Aspect Ratio %s" % asset.get("ScreenAspectRatio"),
+                ),
+                ui.stat(
+                    label="Entry Point",
+                    value="%s" % asset.get("TimeCodeIn"),
+                    # icon="ScreenTime",
+                    caption="%s (CPL %s) Frames"
+                    % (asset.get("EntryPoint"), asset.get("CPLEntryPoint")),
+                ),
+                ui.stat(
+                    label="Out Point",
+                    value="%s" % asset.get("TimeCodeOut"),
+                    # icon="ImageCrosshair",
+                    caption="%s (CPL %s) Frames"
+                    % (asset.get("CPLOutPoint"), asset.get("CPLOutPoint")),
+                ),
+                ui.stat(
+                    label="Duration",
+                    value="%s" % asset.get("TimeCodeDuration"),
+                    # icon="ImageCrosshair",
+                    caption="%s (Intr. %s) Frames"
+                    % (asset.get("Duration"), asset.get("IntrinsicDuration")),
+                ),
+                ui.stat(
+                    label="Framerate",
+                    value="%s FPS" % asset.get("FrameRate"),
+                    # icon="ImageCrosshair",
+                    caption="Edite Rate %s FPS" % asset.get("EditRate"),
+                ),
+            ],
+        )
+    ]
+    probe = asset.get("Probe")
+    if probe:
+        items += [
+            ui.text_l("Probe Summary"),
+            ui.stats(
+                justify="between",
+                items=[
+                    ui.stat(
+                        label="Type",
+                        value="%s" % probe.get("LabelSetType"),
+                        # icon="ImageCrosshair",
+                        # caption="Company %s" % probe.get("CompanyName"),
+                    ),
+                    ui.stat(
+                        label="Aspect Ratio",
+                        value="%s" % probe.get("AspectRatio"),
+                        # icon="ImageCrosshair",
+                        # caption="Aspect Ratio %s" % probe.get("ScreenAspectRatio"),
+                    ),
+                    ui.stat(
+                        label="Average BitRate",
+                        value="%s Mb/s" % probe.get("AverageBitRate"),
+                        # icon="ScreenTime",
+                        caption="Max. %s Mb/s" % probe.get("MaxBitRate"),
+                    ),
+                    ui.stat(
+                        label="Encoder",
+                        value="%s" % probe.get("ProductName"),
+                        # icon="ImageCrosshair",
+                        caption="%s" % (probe.get("ProductVersion")),
+                    ),
+                    ui.stat(
+                        label="Resolution",
+                        value="%s" % probe.get("Resolution"),
+                        # icon="ImageCrosshair",
+                        # caption="%s" % (probe.get("ProductVersion")),
+                    ),
+                    ui.stat(
+                        label="Container Duration",
+                        value="%s Frames" % probe.get("ContainerDuration"),
+                        # icon="ImageCrosshair",
+                        # caption="%s (Intr. %s) Frames" % (probe.get("Duration"), probe.get("IntrinsicDuration")),
+                    ),
+                    ui.stat(
+                        label="Edite Rate",
+                        value="%s FPS" % probe.get("EditRate"),
+                        # icon="ImageCrosshair",
+                        caption="Sample Rate %s FPS" % probe.get("SampleRate"),
+                    ),
+                ],
+            ),
+        ]
+
+    items += [
+        ui.expander(
+            name="raw_probe_result_txt_exp",
+            label="Raw Probe Results",
+            items=[
+                ui.markup(
+                    name="raw_probe_result_txt",
+                    content="<pre>%s</pre>" % yaml.dump(probe, indent=2),
+                ),
+            ],
+        )
+    ]
 
     return items
-    
-    #ui.expander(
+
+    # ui.expander(
     #    name="expander%s" % asset["Id"],
     #    label="Raw Data",
     #    items=[ui.text(md_table(flat(asset)))],
-    #)
-    
-    '''
+    # )
+
+    """
     ui.stat(
                 label="Entry Point",
                 value=asset.get("EntryPoint"),
@@ -242,7 +264,7 @@ def video_asset_details(asset):
                 icon="StorageOptical",
                 caption="12391B",
             ),
-    '''
+    """
 
 
 def add_reels_probe_cards(q, parse_report):
@@ -254,27 +276,31 @@ def add_reels_probe_cards(q, parse_report):
             for asset_type, asset in reellist["Assets"].items():
                 if asset_type == "Picture":
                     items += video_asset_details(asset)
-            q.page.add("cpl_reel_probe_%s" % reellist["Id"], ui.form_card(
-                box=ui.box("content", size=0),
-                items = [
-                    ui.text_xl("CPL Reel Probe List %s" % reellist["Position"]),
-                    ui.text_s("%s" % (reellist["Id"])),
-                    ui.text_s("%s" % (reellist["AnnotationText"])),
-                    ] + items
-                )
+            q.page.add(
+                "cpl_reel_probe_%s" % reellist["Id"],
+                ui.form_card(
+                    box=ui.box("content", size=0),
+                    items=[
+                        ui.text_xl("CPL Reel Probe List %s" % reellist["Position"]),
+                        ui.text_s("%s" % (reellist["Id"])),
+                        ui.text_s("%s" % (reellist["AnnotationText"])),
+                    ]
+                    + items,
+                ),
             )
-                
 
 
 def add_cpl_cards(q, parse_report):
     for cpl in parse_report.get("cpl_list", []):
         infos = cpl["Info"]["CompositionPlaylist"]
 
-        #namings = {k: v.get("Value") for k, v in infos["NamingConvention"].items()}
+        # namings = {k: v.get("Value") for k, v in infos["NamingConvention"].items()}
 
-        q.page.add("cpl_infos_" + cpl["FileName"], ui.form_card(
-            box=ui.box("content", size=0),
-            items = [
+        q.page.add(
+            "cpl_infos_" + cpl["FileName"],
+            ui.form_card(
+                box=ui.box("content", size=0),
+                items=[
                     ui.text_xl("Composition Playlist"),
                     ui.text_s(cpl["FilePath"]),
                     ui.expander(
@@ -284,8 +310,7 @@ def add_cpl_cards(q, parse_report):
                             ui.text(md_table(flat(infos.get("NamingConvention")))),
                         ],
                     ),
-
-                    #ui.text(make_markdown_table(namings.keys(), [namings.values()])),
+                    # ui.text(make_markdown_table(namings.keys(), [namings.values()])),
                     ui.expander(
                         name="cpl_infos_expander",
                         label="Informations",
@@ -307,49 +332,54 @@ def add_cpl_cards(q, parse_report):
                         name="raw_cpl_data",
                         label="Raw CPL Data",
                         items=[full_table(flat(infos))],
-                    )
-                ]
-            )
+                    ),
+                ],
+            ),
         )
 
         for reellist in infos["ReelList"]:
-            q.page.add("cpl_reel_%s" % reellist["Id"], ui.form_card(
-                box=ui.box("content", size=0),
-                items = [
-                    ui.text_xl("CPL Reel List %s" % reellist["Position"]),
-                    ui.text_s("%s" % (reellist["Id"])),
-                    ui.text_s("%s" % (reellist["AnnotationText"])),
-                    ] + [ 
+            q.page.add(
+                "cpl_reel_%s" % reellist["Id"],
+                ui.form_card(
+                    box=ui.box("content", size=0),
+                    items=[
+                        ui.text_xl("CPL Reel List %s" % reellist["Position"]),
+                        ui.text_s("%s" % (reellist["Id"])),
+                        ui.text_s("%s" % (reellist["AnnotationText"])),
+                    ]
+                    + [
                         ui.expander(
                             name="expander%s" % reellist["AnnotationText"],
                             label=type,
                             items=[ui.text(md_table(flat(asset)))],
                         )
                         for type, asset in reellist["Assets"].items()
-                    ]
-                )
+                    ],
+                ),
             )
-                
 
 
 def add_am_cards(q, report):
     for assetmap in report.get("assetmap_list", []):
-        cols = ["File", "Id",  "VolId", "Offset", "Length", "PKL"]
+        cols = ["File", "Id", "VolId", "Offset", "Length", "PKL"]
         infos = assetmap["Info"]["AssetMap"]
         rows = [
-            (asset["ChunkList"]["Chunk"].get("Path", ""), 
-             asset["Id"],
-             asset["ChunkList"]["Chunk"].get("VolumeIndex", ""), 
-             asset["ChunkList"]["Chunk"].get("Offset", ""), 
-             asset["ChunkList"]["Chunk"].get("Length", ""), 
-             asset.get("PackingList", ""))
+            (
+                asset["ChunkList"]["Chunk"].get("Path", ""),
+                asset["Id"],
+                asset["ChunkList"]["Chunk"].get("VolumeIndex", ""),
+                asset["ChunkList"]["Chunk"].get("Offset", ""),
+                asset["ChunkList"]["Chunk"].get("Length", ""),
+                asset.get("PackingList", ""),
+            )
             for asset in infos["AssetList"]["Asset"]
         ]
 
-        q.page.add("assetmap_infos_" + assetmap["FileName"], 
+        q.page.add(
+            "assetmap_infos_" + assetmap["FileName"],
             ui.form_card(
                 box=ui.box("content", size=0),
-                items = [
+                items=[
                     ui.text_xl("Asset Map"),
                     # ui.text_xl(pkl["FileName"]),
                     ui.text_s(assetmap["FilePath"]),
@@ -359,10 +389,9 @@ def add_am_cards(q, report):
                         label="Raw AM Data",
                         items=[full_table(flat(infos))],
                     ),
-                ]
-            )
+                ],
+            ),
         )
-
 
 
 """if dcp.package_type != "OV":
@@ -378,29 +407,33 @@ else:
 
 # check_form.append(ui.button(name="dcp_check", label="Check DCP", value=str(dcp.uid)))
 
+
 def checks_md_table(checks):
     if len(checks) == 0:
         return ui.text_s("Empty List")
     cols = ["Asset", "Name", "Result", "Message"]
-    
+
     rows = []
     for check in checks:
         result = "bypass" if check["bypass"] else "pass"
         message = ""
         if len(check.get("errors")) > 0:
-            result = ",".join(err["criticality"].lower() for err in check["errors"] )
-            message = "\r\n<br>\r\n".join(err["message"] for err in check["errors"] )
+            result = ",".join(err["criticality"].lower() for err in check["errors"])
+            message = "\r\n<br>\r\n".join(err["message"] for err in check["errors"])
 
-        rows.append([" > ".join(check["asset_stack"]), check["pretty_name"], result, message])
+        rows.append(
+            [" > ".join(check["asset_stack"]), check["pretty_name"], result, message]
+        )
 
     return ui.text(make_md_table(cols, rows))
+
 
 def checks_full_table(checks):
     columns = [
         ui.table_column(
-            name="name", 
-            label="Name", 
-            searchable=True, 
+            name="name",
+            label="Name",
+            searchable=True,
             min_width="400px",
             sortable=True,
             link=False,
@@ -415,7 +448,7 @@ def checks_full_table(checks):
                     ui.tag(label="warning", color="yellow"),
                     ui.tag(label="pass", color="green"),
                     ui.tag(label="bypass", color="black"),
-                ]
+                ],
             ),
             searchable=True,
             filterable=True,
@@ -462,10 +495,11 @@ def checks_full_table(checks):
         result = "bypass" if check["bypass"] else "pass"
         message = ""
         if len(check.get("errors")) > 0:
-            result = ",".join(err["criticality"].lower() for err in check["errors"] )
-            message = "\r\n<br>\r\n".join(err["message"] for err in check["errors"] )
-        
-        rows.append(ui.table_row(
+            result = ",".join(err["criticality"].lower() for err in check["errors"])
+            message = "\r\n<br>\r\n".join(err["message"] for err in check["errors"])
+
+        rows.append(
+            ui.table_row(
                 name=check["name"],
                 cells=[
                     check["pretty_name"],
@@ -484,44 +518,43 @@ def checks_full_table(checks):
         columns=columns,
         rows=rows,
         downloadable=True,
-        tooltip="Result"
+        tooltip="Result",
     )
 
+
 def add_check_cards(q, report):
-    q.page.add("check_result_card", ui.form_card(
+    q.page.add(
+        "check_result_card",
+        ui.form_card(
             box=ui.box("content", size=0),
             items=[
                 ui.inline(
                     justify="between",
                     items=[
-                        ui.text_xl(
-                            " %s "
-                            % (
-                                "PASS" if report.get("valid") else "FAIL"
-                            )
-                        )
-                    ]
+                        ui.text_xl(" %s " % ("PASS" if report.get("valid") else "FAIL"))
+                    ],
                 ),
                 ui.expander(
                     name="expander",
                     label="Check Summary",
                     items=[
                         ui.markup(
-                            name="markup", content="<pre>%s</pre>" % report.get("message")
+                            name="markup",
+                            content="<pre>%s</pre>" % report.get("message"),
                         ),
                         ui.text_xl("Errors"),
                         checks_md_table(report.get("errors", [])),
                         ui.text_xl("Warnings"),
                         checks_md_table(report.get("warnings", [])),
                         ui.text_xl("Bypassed"),
-                        checks_md_table(report.get("bypass", []))
+                        checks_md_table(report.get("bypass", [])),
                     ],
                 ),
                 ui.expander(
                     name="expander",
                     label="Full Checks Reference",
-                    items=[ checks_full_table(report.get("checks")) ],
+                    items=[checks_full_table(report.get("checks"))],
                 ),
             ],
-        )
+        ),
     )

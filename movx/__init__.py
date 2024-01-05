@@ -86,9 +86,7 @@ def start_app(debug=False, reload=False):
     print("Starting movx in Application Mode")
     start_waved()
 
-    config = uvicorn.Config(
-        ENTRY_POINT, port=8000, log_level="warning", reload=reload
-    )
+    config = uvicorn.Config(ENTRY_POINT, port=8000, log_level="warning", reload=reload)
     instance = UvicornServer(config=config)
     instance.start()
 

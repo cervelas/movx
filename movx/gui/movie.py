@@ -6,22 +6,24 @@ from movx.gui import setup_page, debug_card
 
 
 from movx.gui.cards.movie import add_movie_cards, dcps_table
+
+
 @on()
 async def movie_tags_picker(q):
     if q.client.current_movie:
         movie = Movie.get(q.client.current_movie)
         if movie:
-             with movie.fresh() as m:
-                names = [ t.name for t in m.tags]
-                new_tags = [ t for t in q.args.movie_tags_picker if t not in names ]
-                tags = [ Tags.filter(Tags.name == tag).first() for tag in new_tags ]
+            with movie.fresh() as m:
+                names = [t.name for t in m.tags]
+                new_tags = [t for t in q.args.movie_tags_picker if t not in names]
+                tags = [Tags.filter(Tags.name == tag).first() for tag in new_tags]
                 print(tags)
                 for t in tags:
                     m.tags.append(t)
 
+
 @on("#mov/{id}")
 async def show_movie(q: Q, id: int):
-
     movie = Movie.get(id)
 
     if movie:
@@ -34,15 +36,15 @@ async def show_movie(q: Q, id: int):
         ovs = movie.ovs()
 
         if len(ovs) > 0:
-            q.page["ovs_dcps_table"] = ui.form_card(box="content",
-                                                    items = [   ui.text_l("OVs"),
-                                                                dcps_table(ovs) ])
+            q.page["ovs_dcps_table"] = ui.form_card(
+                box="content", items=[ui.text_l("OVs"), dcps_table(ovs)]
+            )
         vfs = movie.vfs()
 
         if len(ovs) > 0:
-            q.page["vfs_dcps_table"] = ui.form_card(box="content",
-                                                    items = [   ui.text_l("VFs"),
-                                                                dcps_table(vfs) ])
+            q.page["vfs_dcps_table"] = ui.form_card(
+                box="content", items=[ui.text_l("VFs"), dcps_table(vfs)]
+            )
         """
         for dcp in movx.get_movie_dcps(title) or []:
             q.page['dcp-' + str(dcp.uid)] = ui.form_card(box='content',

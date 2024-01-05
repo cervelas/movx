@@ -12,7 +12,7 @@ def jobs_list_table(jobs):
             searchable=True,
             min_width="600px",
             cell_overflow="wrap",
-            cell_type=ui.markdown_table_cell_type(target='')
+            cell_type=ui.markdown_table_cell_type(target=""),
         ),
         ui.table_column(name="type", label="Type", searchable=True, min_width="40px"),
         ui.table_column(
@@ -47,7 +47,7 @@ def gen_jobs_rows(jobs):
             ui.table_row(
                 name=str(job.id),
                 cells=[
-                    '[%s](#job/%s)' % (job.dcp.title, job.id),
+                    "[%s](#job/%s)" % (job.dcp.title, job.id),
                     job.type.name,
                     job.status.name,
                     time.ctime(job.started_at),
@@ -137,4 +137,3 @@ def check_job_details(task):
             ),
         ],
     )
-

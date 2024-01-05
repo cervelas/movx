@@ -16,8 +16,6 @@ if not check_profile_file.exists():
         json.dump(DEFAULT_CHECK_PROFILE, fp)
 
 
-
-
 def check_all(cb=None):
     """
     Check all the DCP in the database
@@ -64,23 +62,37 @@ def parse_all():
         for dcp in session.scalars(select(DCP)).all():
             print(dcp.size)
 
+
 def by_files_parse_report(report):
-    
-    files = { am["FileName"]: { "__id": am["Info"]["AssetMap"]["Id"], "__type": "assetmap" } for am in report["assetmap_list"] }
-    files.update({ file: { "__id": uuid, "__type": "unknown" } for uuid, file in report["asset_list"].items() })
+    files = {
+        am["FileName"]: {"__id": am["Info"]["AssetMap"]["Id"], "__type": "assetmap"}
+        for am in report["assetmap_list"]
+    }
+    files.update(
+        {
+            file: {"__id": uuid, "__type": "unknown"}
+            for uuid, file in report["asset_list"].items()
+        }
+    )
 
     for k, v in files.items():
         f = finditem(report, "Id", v["__id"])
         for e in f:
-            files[k].update( e )
+            files[k].update(e)
         if "asdcpKind=" in files[k].get("Type", ""):
             files[k]["__type"] = files[k].get("Type").split("asdcpKind=")[1].lower()
         elif files[k].get("PackingList") is True:
             files[k]["__type"] = "pkl"
 
-    files.update({ vi["FileName"]: { "__type": "volindex", **vi["Info"] } for vi in report["volindex_list"] })
+    files.update(
+        {
+            vi["FileName"]: {"__type": "volindex", **vi["Info"]}
+            for vi in report["volindex_list"]
+        }
+    )
 
     return files
+
 
 def parse_job(job, dcp, probe=False):
     """
@@ -94,7 +106,7 @@ def parse_job(job, dcp, probe=False):
     dcp.update(
         package_type=report.get("package_type", "??"), size=report.get("size", -1)
     )
-    
+
     report["files"] = by_files_parse_report(report)
 
     if len(report.get("cpl_list", [])) > 0:
@@ -128,6 +140,7 @@ def parse(dcp):
     # tasks.exec(_parse_task, task, wait_task=blocking, dcp = dcp, probe = probe)
     return job.id
 
+
 def probe(dcp):
     """
     Create and run a Probing job
@@ -144,7 +157,6 @@ def probe(dcp):
 
     # tasks.exec(_parse_task, task, wait_task=blocking, dcp = dcp, probe = probe)
     return job.id
-
 
 
 def check_job(job, dcp, profile=None, cb=None):
@@ -169,10 +181,17 @@ def check_job(job, dcp, profile=None, cb=None):
 
     report["succeeded"] = [s.to_dict() for s in checkreport.checks_succeeded()]
     report["fails"] = [f.to_dict() for f in checkreport.checks_failed()]
-    report["errors"] = [v.to_dict() for v in checkreport.checks_failed() if v.errors[0].criticality == "ERROR"]
-    report["warnings"] = [v.to_dict() for v in checkreport.checks_failed() if v.errors[0].criticality == "WARNING"]
+    report["errors"] = [
+        v.to_dict()
+        for v in checkreport.checks_failed()
+        if v.errors[0].criticality == "ERROR"
+    ]
+    report["warnings"] = [
+        v.to_dict()
+        for v in checkreport.checks_failed()
+        if v.errors[0].criticality == "WARNING"
+    ]
     report["bypassed"] = [b.to_dict() for b in checkreport.checks_bypassed()]
-
 
     job.finished.set()
 
@@ -183,7 +202,7 @@ def check(dcp, profile=None, cb=None):
     """
     Create a Check job for a DCP
     """
-    job = Job(type=JobType.check, dcp=dcp,  author=User.get(1))
+    job = Job(type=JobType.check, dcp=dcp, author=User.get(1))
 
     job.add()
 

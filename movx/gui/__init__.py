@@ -97,39 +97,39 @@ layouts = {
 }
 
 meta = ui.meta_card(
-            box="",
-            title="",
-            theme="default",
-            layouts=layouts["default"],
-            notification_bar=ui.notification_bar(
-                text="",
-                type="success",
-                position="top-right",
-                # buttons=[ui.button(name='btn', label='Link button', link=True)]
-            ),
-            stylesheet=ui.inline_stylesheet(style),
-            notification = "",
-        )
+    box="",
+    title="",
+    theme="default",
+    layouts=layouts["default"],
+    notification_bar=ui.notification_bar(
+        text="",
+        type="success",
+        position="top-right",
+        # buttons=[ui.button(name='btn', label='Link button', link=True)]
+    ),
+    stylesheet=ui.inline_stylesheet(style),
+    notification="",
+)
 
 nav = ui.nav_card(
-            box="sidebar",
-            value="/",
+    box="sidebar",
+    value="/",
+    items=[
+        ui.nav_group(
+            "",
             items=[
-                ui.nav_group(
-                    "",
-                    items=[
-                        ui.nav_item(name="#overview", label="📽 Overview"),
-                        ui.nav_item(name="#dcps", label="⛁ DCPs"),
-                        ui.nav_item(name="#movs", label="🎞 Movies"),
-                        ui.nav_item(name="#jobs", label="𝌠 Jobs"),
-                        ui.nav_item(name="#settings", label="⚙ Settings"),
-                    ],
-                ),
+                ui.nav_item(name="#overview", label="📽 Overview"),
+                ui.nav_item(name="#dcps", label="⛁ DCPs"),
+                ui.nav_item(name="#movs", label="🎞 Movies"),
+                ui.nav_item(name="#jobs", label="𝌠 Jobs"),
+                ui.nav_item(name="#settings", label="⚙ Settings"),
             ],
-        )
+        ),
+    ],
+)
+
 
 def setup_page(q: Q, title=None, layout="default"):
-
     q.page.drop()
 
     # meta stuff
@@ -137,12 +137,13 @@ def setup_page(q: Q, title=None, layout="default"):
     meta.layouts = layouts.get(layout, layouts["default"])
 
     # Add layouts, header and footer
-    q.page['meta'] = meta
+    q.page["meta"] = meta
 
     # nav stuff
     nav.value = q.client.__loc_hash
 
-    q.page['nav'] = nav
+    q.page["nav"] = nav
+
 
 def breadcrumbs(q: Q, crumbs=[]):
     # crumbs = [ ("#", "Digital Cinema Packages") ] + crumbs
@@ -152,12 +153,15 @@ def breadcrumbs(q: Q, crumbs=[]):
             box="content", items=[ui.breadcrumb(name=b[0], label=b[1]) for b in crumbs]
         )
 
+
 def make_md_row(values):
-    bn = '\n'
+    bn = "\n"
     return f"| {' | '.join([str(x).replace(bn, '<br>') for x in values])} |"
+
 
 def inline(items, **args):
     return ui.inline(items=items, **args)
+
 
 def make_md_table(cols, rows):
     return "\n".join(
@@ -183,7 +187,8 @@ def convert_size(size_bytes, exact=True):
 
 
 def flat(dic: MutableMapping, sep: str = "."):
-    return { sep.join(k): v for k, v in flatten(dic).items() }
+    return {sep.join(k): v for k, v in flatten(dic).items()}
+
 
 def md_table(dic: dict):
     if not dic:
@@ -195,14 +200,13 @@ def md_table(dic: dict):
             rows.append([k, v])
     return make_md_table(["Name", "Value"], rows)
 
+
 def full_table(dic: dict, searchable=True, height="500px"):
     rows = []
     exclude = (MutableSequence, MutableMapping)
     for k, v in dic.items():
         if not isinstance(v, exclude):
-            rows.append(
-                ui.table_row(name=f"row.{k}", cells=[str(k), str(v)])
-            )
+            rows.append(ui.table_row(name=f"row.{k}", cells=[str(k), str(v)]))
     return ui.table(
         name="table",
         height=height,
@@ -224,12 +228,14 @@ def full_table(dic: dict, searchable=True, height="500px"):
                 min_width="600px",
                 cell_overflow="wrap",
             ),
-        ], rows=rows
+        ],
+        rows=rows,
     )
 
 
 def get_windows_drives():
     from ctypes import windll
+
     drives = []
     bitmask = windll.kernel32.GetLogicalDrives()
     for letter in range(65, 65 + 26):
@@ -266,8 +272,10 @@ def get_linux_drives():
     """
     pass
 
+
 # do not mess with namespaces
 from h2o_wave import routing as h2o_r
+
 
 async def autoroute(q: Q, debug=False) -> bool:
     """
@@ -310,7 +318,7 @@ async def autoroute(q: Q, debug=False) -> bool:
                     print("arg: %s" % arg)
                     print("predicate: %s" % predicate)
                     print("arg value: %s" % arg_value)
-                
+
                 if await h2o_r._match_predicate(predicate, func, arity, q, arg_value):
                     awaited = True
             for predicate, func, arity, rx, conv in h2o_r._arg_with_params_handlers:
@@ -324,10 +332,12 @@ async def autoroute(q: Q, debug=False) -> bool:
                     params = match.groupdict()
                     for key, value in params.items():
                         params[key] = conv[key].convert(value)
-                    if await h2o_r._match_predicate(predicate, func, arity, q, arg_value, **params):
+                    if await h2o_r._match_predicate(
+                        predicate, func, arity, q, arg_value, **params
+                    ):
                         q.args[arg] = False
                         awaited = True
-    
+
     # Event handlers.
     for event_source in expando_to_dict(q.events):
         for entry in h2o_r._event_handlers.get(event_source, []):

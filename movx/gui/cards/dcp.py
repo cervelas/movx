@@ -11,15 +11,16 @@ from movx.gui import (
     full_table,
 )
 
+
 def add_infos_cards(q, dcp):
     add_dcp_header_card(q, dcp)
     add_dcp_parse_card(q, dcp)
     add_dcp_probe_card(q, dcp)
     add_dcp_check_card(q, dcp)
-    #add_dcp_actions_card(q, dcp)
+    # add_dcp_actions_card(q, dcp)
+
 
 def check_card(report):
-
     columns = [
         ui.table_column(name="name", label="Name", searchable=True, min_width="400px"),
         ui.table_column(
@@ -133,72 +134,80 @@ def check_card(report):
     )
 
 
-
 def add_dcp_header_card(q, dcp):
-    
     dcp_tags = []
 
     if dcp.tags:
-        dcp_tags = [ t.name for t in dcp.tags ]
-    
-    available_tags = [ t.name for t in Tags.get_all() if t.name not in dcp_tags ]
+        dcp_tags = [t.name for t in dcp.tags]
+
+    available_tags = [t.name for t in Tags.get_all() if t.name not in dcp_tags]
 
     q.page.add(
-        "dcp_header", ui.form_card(
-        box=ui.box("infobar"),
-        items=[
-            ui.inline(
-                justify="between",
-                items=[
-                    ui.button(
-                        name="back_to_list", label="< Overview", value=""
-                    ),
-                    ui.text_xl(dcp.title),
-                    ui.picker(name='dcp_tags_picker', label='Tags', values=dcp_tags, choices=[
-                        ui.choice(name=t, label=t) for t in available_tags
-                    ], trigger=True),
-                    ui.button(
-                        name="open_movie", label="Movie >", value=""
-                    ),
-                ]
-            ),
-        ],
-    ))
+        "dcp_header",
+        ui.form_card(
+            box=ui.box("infobar"),
+            items=[
+                ui.inline(
+                    justify="between",
+                    items=[
+                        ui.button(name="back_to_list", label="< Overview", value=""),
+                        ui.text_xl(dcp.title),
+                        ui.picker(
+                            name="dcp_tags_picker",
+                            label="Tags",
+                            values=dcp_tags,
+                            choices=[
+                                ui.choice(name=t, label=t) for t in available_tags
+                            ],
+                            trigger=True,
+                        ),
+                        ui.button(name="open_movie", label="Movie >", value=""),
+                    ],
+                ),
+            ],
+        ),
+    )
+
 
 def add_dcp_parse_card(q, dcp):
-
     jobs = dcp.jobs(type=JobType.parse)
 
-    job_items = [ ]
+    job_items = []
     if len(jobs) == 0:
-        job_items = [ ui.text_l("DCP Not Parsed") ]
+        job_items = [ui.text_l("DCP Not Parsed")]
     else:
         job = jobs[0]
         if job.status == JobStatus.started:
-            job_items = [ ui.text_l("Running...") ]
+            job_items = [ui.text_l("Running...")]
         else:
             st = datetime.fromtimestamp(job.finished_at)
-            job_items = [ ui.text("[Last Parse Job %s](#job/%s)" % (st.strftime("%m/%d/%Y %H:%M:%S"), job.id)) ]
+            job_items = [
+                ui.text(
+                    "[Last Parse Job %s](#job/%s)"
+                    % (st.strftime("%m/%d/%Y %H:%M:%S"), job.id)
+                )
+            ]
 
     q.page.add(
-        "dcp_parse_card", ui.form_card(
-        box=ui.box("content", size=3),
-        items=[
-            ui.inline(
-                items=[
-                    ui.text_l("Parse")
-                    ] + job_items + [
-                    ui.button(
-                        name="dcp_parse_action", label="Parse", value=str(dcp.id)
-                    ),
-                ]
-            ),
-        ],
-    ))
+        "dcp_parse_card",
+        ui.form_card(
+            box=ui.box("content", size=3),
+            items=[
+                ui.inline(
+                    items=[ui.text_l("Parse")]
+                    + job_items
+                    + [
+                        ui.button(
+                            name="dcp_parse_action", label="Parse", value=str(dcp.id)
+                        ),
+                    ]
+                ),
+            ],
+        ),
+    )
 
 
 def add_dcp_probe_card(q, dcp):
-    
     probe_jobs = dcp.jobs(type=JobType.probe)
 
     job = False
@@ -206,15 +215,15 @@ def add_dcp_probe_card(q, dcp):
     job_items = []
 
     if len(probe_jobs) == 0:
-        job_items = [ ui.text("DCP Not Parsed") ]
+        job_items = [ui.text("DCP Not Parsed")]
     else:
         job = probe_jobs[0]
         if job.status == JobStatus.started:
-            job_items = [ ui.text("Running...") ]
+            job_items = [ui.text("Running...")]
         else:
             st = datetime.fromtimestamp(job.finished_at)
 
-            '''
+            """
             job_items += [ ui.stats(
                         [
                             ui.stat(
@@ -237,42 +246,54 @@ def add_dcp_probe_card(q, dcp):
                             ),
                         ]
                     ) ]
-            '''
-            
-            job_items += [ ui.text("[Last Probe Job %s](#job/%s)" % (st.strftime("%m/%d/%Y %H:%M:%S"), job.id)),
-                    ui.button(name="probe_job_detail", label="Details", path="/#job/%s" % dcp.id) ]
+            """
 
-    items = [ ui.inline(
-                items= [
-                    ui.text_l("Probe")
-                ] + job_items + [
-                    ui.button(name="dcp_probe_action", label="Probe", value=str(dcp.id))
-                ]
-            ) ] + items
+            job_items += [
+                ui.text(
+                    "[Last Probe Job %s](#job/%s)"
+                    % (st.strftime("%m/%d/%Y %H:%M:%S"), job.id)
+                ),
+                ui.button(
+                    name="probe_job_detail", label="Details", path="/#job/%s" % dcp.id
+                ),
+            ]
+
+    items = [
+        ui.inline(
+            items=[ui.text_l("Probe")]
+            + job_items
+            + [ui.button(name="dcp_probe_action", label="Probe", value=str(dcp.id))]
+        )
+    ] + items
 
     q.page.add(
-        "dcp_probe_card", ui.form_card(
-        box=ui.box("content"),
-        items=items,
-    ))
-    
+        "dcp_probe_card",
+        ui.form_card(
+            box=ui.box("content"),
+            items=items,
+        ),
+    )
+
+
 def add_dcp_check_card(q, dcp):
     q.page.add(
-        "dcp_check_card", ui.form_card(
-        box=ui.box("content"),
-        items=[
-            
-            ui.inline(
-                items=[
-                    ui.button(
-                        name="dcp_check_action", label="Check", value=str(dcp.id)
-                    ),
-                ]
-            ),
-            # ui.text_s(dcp.path),
-            # ui.text(make_markdown_table(infos.keys(), [ infos.values() ]))
-        ],
-    ))
+        "dcp_check_card",
+        ui.form_card(
+            box=ui.box("content"),
+            items=[
+                ui.inline(
+                    items=[
+                        ui.button(
+                            name="dcp_check_action", label="Check", value=str(dcp.id)
+                        ),
+                    ]
+                ),
+                # ui.text_s(dcp.path),
+                # ui.text(make_markdown_table(infos.keys(), [ infos.values() ]))
+            ],
+        ),
+    )
+
 
 def dcp_infos_card(q, dcp):
     q.page.add(
@@ -337,7 +358,8 @@ def dcp_infos_card(q, dcp):
                             value="N/A",
                             width="120px",
                             choices=[
-                                ui.choice(status.name, status.name) for status in Tags.get()
+                                ui.choice(status.name, status.name)
+                                for status in Tags.get()
                             ],
                         ),
                     ],
@@ -407,33 +429,31 @@ def dcp_infos_card(q, dcp):
             value="OK",
         ),
     )
-    
+
     q.page.add(
-        "dcp_header", ui.form_card(
-        box=ui.box("infobar", size=0),
-        items=[
-            ui.inline(
-                items=[
-                    ui.button(
-                        name="back_to_list", label="< Overview", value=""
-                    ),
-                    ui.text_xl(dcp.title),
-                    ui.button(
-                        name="open_movie", label="Movie >", value=""
-                    ),
-                ]
-            ),
-            ui.inline(
-                items=[
-                    ui.button(
-                        name="dcp_parse_action", label="Parse", value=str(dcp.id)
-                    ),
-                    ui.button(
-                        name="dcp_check_action", label="Check", value=str(dcp.id)
-                    ),
-                ]
-            ),
-            # ui.text_s(dcp.path),
-            # ui.text(make_markdown_table(infos.keys(), [ infos.values() ]))
-        ],
-    ))
+        "dcp_header",
+        ui.form_card(
+            box=ui.box("infobar", size=0),
+            items=[
+                ui.inline(
+                    items=[
+                        ui.button(name="back_to_list", label="< Overview", value=""),
+                        ui.text_xl(dcp.title),
+                        ui.button(name="open_movie", label="Movie >", value=""),
+                    ]
+                ),
+                ui.inline(
+                    items=[
+                        ui.button(
+                            name="dcp_parse_action", label="Parse", value=str(dcp.id)
+                        ),
+                        ui.button(
+                            name="dcp_check_action", label="Check", value=str(dcp.id)
+                        ),
+                    ]
+                ),
+                # ui.text_s(dcp.path),
+                # ui.text(make_markdown_table(infos.keys(), [ infos.values() ]))
+            ],
+        ),
+    )

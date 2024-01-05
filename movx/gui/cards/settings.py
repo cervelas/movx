@@ -17,7 +17,6 @@ locations_commands = [
 ]
 
 
-
 def locations_list_card(locations):
     rows = []
 
@@ -162,7 +161,6 @@ def update_tags_dialog(q, tag):
 
 
 def tags_card(q, tags):
-
     tags_commands = [
         ui.command(name="update_tags", label="Update", icon="Update"),
         ui.command(name="delete_tags", label="Delete", icon="delete"),
@@ -181,7 +179,6 @@ def tags_card(q, tags):
                 ],
             )
         )
-
 
     return ui.form_card(
         box=ui.box(zone="2cols"),
@@ -243,7 +240,9 @@ db_utils = ui.form_card(
                     name="dbutils_del_all_tasks", label="Delete Tasks", icon="delete"
                 ),
                 ui.button(name="dbutils_del_all", label="Delete All", icon="delete"),
-                ui.button(name="dbutils_reset_db", label="Reset Database", icon="delete"),
+                ui.button(
+                    name="dbutils_reset_db", label="Reset Database", icon="delete"
+                ),
             ]
         ),
     ],

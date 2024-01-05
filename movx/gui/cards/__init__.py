@@ -22,25 +22,28 @@ async def debug_card(q):
         ("q.events", q.events),
         ("q.args", q.args),
     ]
-    
+
     for name, source in states:
         dump.append(f"### {name}")
         dump.append(
             code_block([f"{k}: {v}" for k, v in expando_to_dict(source).items()])
         )
 
-    q.page.add("debug", ui.form_card(
-        box="content",
-        items=[
-            ui.expander(
-                name="Debug",
-                label="Application states",
-                items=[
-                    ui.text(content="\n".join(dump)),
-                ],
-            ),
-        ],
-    ))
+    q.page.add(
+        "debug",
+        ui.form_card(
+            box="content",
+            items=[
+                ui.expander(
+                    name="Debug",
+                    label="Application states",
+                    items=[
+                        ui.text(content="\n".join(dump)),
+                    ],
+                ),
+            ],
+        ),
+    )
 
     await q.page.save()
 
@@ -54,7 +57,7 @@ def crash_report(q):
     def code_block(content):
         return "\n".join(["```", *content, "```"])
 
-    type_, value_, traceback_ = sys.exc_info() 
+    type_, value_, traceback_ = sys.exc_info()
     stack_trace = traceback.format_exception(type_, value_, traceback_)
 
     dump = [
@@ -69,7 +72,7 @@ def crash_report(q):
         ("q.events", q.events),
         ("q.args", q.args),
     ]
-    
+
     for name, source in states:
         dump.append(f"### {name}")
         dump.append(
@@ -104,4 +107,3 @@ def crash_report(q):
             ),
         ],
     )
-

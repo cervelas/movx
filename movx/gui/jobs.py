@@ -10,6 +10,7 @@ async def on_row_clicked(q: Q):
     q.page["meta"] = ui.meta_card(box="", redirect="#job/%s" % q.args.jobs_list[0])
     await q.page.save()
 
+
 @on()
 async def delete_all_jobs(q: Q):
     jobs.delete_all()
@@ -27,6 +28,7 @@ async def poll_jobs(q: Q):
         q.page["jobs_list"].table.rows = gen_jobs_rows(_tasks)
 
         await q.page.save()
+
 
 @on("#jobs")
 async def tasks_layout(q: Q):

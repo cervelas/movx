@@ -8,20 +8,21 @@ from movx.core.db import DCP
 ffmpeg -ss 00:04:01 -i .\Persona_FTR-1_F-177_XX-EN_20_2K_SEED_20220531_JIN_IOP_OV\Persona_FTR-1_F-177_XX-EN_20_2K_SEED_20220531_JIN_IOP_OV_b44dc5eb-52ad-44_j2c.mxf -frames:v 1 -y  output.png
 """
 
-#@on("all_dcp_list")
-#async def on_row_clicked(q: Q):
+# @on("all_dcp_list")
+# async def on_row_clicked(q: Q):
 #    q.page["meta"] = ui.meta_card(box="", redirect="#dcp/" + q.args.all_dcp_list[0])
 #    await q.page.save()
 
-#@on()
-#async def dcp_parse_action(q):
+# @on()
+# async def dcp_parse_action(q):
 #    core.dcps.parse( DCP.get( q.args.dcp_parse_action ) )
 #    await main(q, q.args.dcp_parse_action )
 #
-#@on()
-#async def dcp_check_action(q):
+# @on()
+# async def dcp_check_action(q):
 #    core.dcps.check( DCP.get( q.args.dcp_check_action ) )
 #    await main( q, q.args.dcp_check_action )
+
 
 @on("#dcps")
 async def overview(q: Q):
@@ -47,7 +48,7 @@ async def overview(q: Q):
                     ),
                 ],
             ),
-            dcps_table(DCP.get_all())
+            dcps_table(DCP.get_all()),
         ],
     )
 
