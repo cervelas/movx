@@ -88,7 +88,7 @@ def start_waved(logs=False):
     print("starting Wave Server")
     os.environ["H2O_WAVE_NO_LOG"] = "0" if logs else "1"
     cwd = os.getcwd()
-    waved_exe = "waved"
+    waved_exe = "./waved"
     if is_win(): 
         waved_exe = "waved.exe"
     os.chdir(WAVE_PATH)
@@ -98,7 +98,7 @@ def start_waved(logs=False):
     )  # (Path(__file__).parent / "assets/")
     print(assets_path)
     try:
-        subprocess.Popen([path.absolute(), LOCAL_ADDR, "-public-dir", assets_path])
+        subprocess.Popen([waved_exe, LOCAL_ADDR, "-public-dir", assets_path])
     except Exception as e:
         print("Fatal Error while starting waved server: %s" % e)
         exit(0)
