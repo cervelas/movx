@@ -21,11 +21,10 @@ def jobs_list_table(jobs):
         ui.table_column(
             name="started", label="started", max_width="200px", data_type="time"
         ),
-        ui.table_column(name="time_elapsed", label="duration", max_width="70px"),
         ui.table_column(
             name="progress",
             label="progress",
-            cell_type=ui.progress_table_cell_type(),
+            #cell_type=ui.progress_table_cell_type(),
             max_width="70px",
         ),
     ]
@@ -51,8 +50,7 @@ def gen_jobs_rows(jobs):
                     job.type.name,
                     job.status.name,
                     time.ctime(job.started_at),
-                    str(timedelta(seconds=job.duration())),
-                    str(job.progress),
+                    str(job.progress * 100) + "%" if job.progress < 1 else "completed",
                 ],
             )
         )

@@ -1,20 +1,19 @@
 import time
-from pathlib import Path
 import json
+import logging
+import httpx
 
 from sqlalchemy import select
 from sqlalchemy.orm.session import make_transient
+
 import clairmeta
+from movx.core import check_report_to_dict
 
-from movx.core.db import DCP, Job, Movie, Session, User, JobType
-from movx.core import jobs, DEFAULT_CHECK_PROFILE, finditem
+from movx.core.db import DCP, Job, LocationType, Movie, Session, User, JobType
+from movx.core import jobs, finditem, check_profile_folder
 
-check_profile_file = Path.home() / ".movx" / "check_profile.json"
 
-if not check_profile_file.exists():
-    with open(check_profile_file, "w") as fp:
-        json.dump(DEFAULT_CHECK_PROFILE, fp)
-
+clairmeta.logger.set_level(logging.WARNING)
 
 def check_all(cb=None):
     """
@@ -66,12 +65,12 @@ def parse_all():
 def by_files_parse_report(report):
     files = {
         am["FileName"]: {"__id": am["Info"]["AssetMap"]["Id"], "__type": "assetmap"}
-        for am in report["assetmap_list"]
+        for am in report.get("assetmap_list", [])
     }
     files.update(
         {
             file: {"__id": uuid, "__type": "unknown"}
-            for uuid, file in report["asset_list"].items()
+            for uuid, file in report.get("asset_list", {}).items()
         }
     )
 
@@ -87,21 +86,49 @@ def by_files_parse_report(report):
     files.update(
         {
             vi["FileName"]: {"__type": "volindex", **vi["Info"]}
-            for vi in report["volindex_list"]
+            for vi in report.get("volindex_list", [])
         }
     )
 
     return files
 
+def start_poll_agent_job(job, dcp, type, timeout = 20):
+    ret = False
+    started = time.time()
+    uri = "http://%s/job_start" % dcp.location.uri
+    r = httpx.get(uri, params={"type": type, "path": dcp.path})
+    if r.status_code == 200:
+        resp = r.json()
+        finished = False
+        uri = "http://%s/job_status" % dcp.location.uri
+        while not finished:
+            if time.time() - started > 20:
+                raise Exception("Timeout on job status request")
+            r = httpx.get(uri, params={"path": dcp.path})
+            if r.status_code == 200:
+                resp = r.json()
+                if resp.get("status") == "done":
+                    ret = resp.get("result", {}).get("report", {})
+                    finished = True
+            else:
+                raise Exception("Bad response on job status request : %s" % r)
+            time.sleep(2)
+    else:
+        raise Exception("Bad response on job start request: %s" % r)
+    
+    return ret
 
-def parse_job(job, dcp, probe=False):
+def parse_job(job, dcp, probe=False, kdm=None, pkey=None):
     """
     Parse a DCP
     """
     report = {}
 
-    cm_dcp = clairmeta.DCP(dcp.path)
-    report = cm_dcp.parse(probe=probe)
+    if dcp.location.type == LocationType.Agent:
+        report = start_poll_agent_job(job, dcp, "parse")
+    else:
+        cm_dcp = clairmeta.DCP(dcp.path, kdm=kdm, pkey=pkey)
+        report = cm_dcp.parse(probe=probe)
 
     dcp.update(
         package_type=report.get("package_type", "??"), size=report.get("size", -1)
@@ -141,7 +168,7 @@ def parse(dcp):
     return job.id
 
 
-def probe(dcp):
+def probe(dcp, kdm=None, pkey=None):
     """
     Create and run a Probing job
     """
@@ -151,7 +178,7 @@ def probe(dcp):
 
     make_transient(dcp)
 
-    ttask = jobs.JobTask(job, parse_job, dcp=dcp, probe=True)
+    ttask = jobs.JobTask(job, parse_job, dcp=dcp, kdm=kdm, pkey=pkey, probe=True)
 
     ttask.start()
 
@@ -159,46 +186,33 @@ def probe(dcp):
     return job.id
 
 
-def check_job(job, dcp, profile=None, cb=None):
+def check_job(job, dcp, ov_dcp_path=None, profile="default"):
     """
     Check a DCP
     """
     report = {}
     status = False
-    profile = DEFAULT_CHECK_PROFILE
-    with open(check_profile_file, "r") as fp:
-        profile = json.load(fp)
+
+    if profile is None:
+        with open(profile, "r") as fp:
+            profile = json.load(fp)
 
     def check_job_cb(file, current, final, t):
         job.update(progress=current / final)
 
     cm_dcp = clairmeta.DCP(dcp.path)
-    status, checkreport = cm_dcp.check(
-        profile=profile, ov_path=None, hash_callback=check_job_cb
+    status, check_report = cm_dcp.check(
+        profile=profile, ov_path=ov_dcp_path, hash_callback=check_job_cb
     )
 
-    report = checkreport.to_dict()
-
-    report["succeeded"] = [s.to_dict() for s in checkreport.checks_succeeded()]
-    report["fails"] = [f.to_dict() for f in checkreport.checks_failed()]
-    report["errors"] = [
-        v.to_dict()
-        for v in checkreport.checks_failed()
-        if v.errors[0].criticality == "ERROR"
-    ]
-    report["warnings"] = [
-        v.to_dict()
-        for v in checkreport.checks_failed()
-        if v.errors[0].criticality == "WARNING"
-    ]
-    report["bypassed"] = [b.to_dict() for b in checkreport.checks_bypassed()]
+    report = check_report_to_dict(check_report)
 
     job.finished.set()
 
     return report
 
 
-def check(dcp, profile=None, cb=None):
+def check(dcp, ov=None, profile=None, cb=None):
     """
     Create a Check job for a DCP
     """
@@ -208,7 +222,11 @@ def check(dcp, profile=None, cb=None):
 
     # make_transient(dcp)
 
-    jt = jobs.JobTask(job, check_job, dcp=dcp, profile=profile)
+    ov_path = ov.path if ov else None
+
+    profile = check_profile_folder / "%s.json" % profile
+
+    jt = jobs.JobTask(job, check_job, dcp=dcp, ov_dcp_path=ov_path, profile=str(profile.resolve()))
     jt.start()
 
     return job.id
@@ -226,7 +244,6 @@ def update_movie(dcp, movie_title):
         dcp = session.query(DCP).get(dcp.id)
 
         if movie is None:
-            print("not found")
             movie = Movie(title=movie_title)
             session.add(movie)
             session.commit()
@@ -238,6 +255,18 @@ def update_movie(dcp, movie_title):
         dcp.movie = movie
         session.commit()
 
+
+def human_check_job(job, dcp):
+    """
+    Create a Human  job for a DCP
+    """
+    job = Job(type=JobType.check, dcp=dcp, author=User.get(1), progress=0)
+
+    job.add()
+
+    # make_transient(dcp)
+
+    return job.id
 
 def copy_task(dcp, target_folder):
     """

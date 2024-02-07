@@ -1,8 +1,7 @@
 import uvicorn
 import webview
 
-from movx import start_waved
-from movx import UvicornServer
+from movx import start_waved, UvicornServer, ENTRY_POINT, LOCAL_URL, UvicornServer, start_waved
 
 if __name__ == "__main__":
     start_waved()
@@ -16,3 +15,15 @@ if __name__ == "__main__":
 
     window = webview.create_window("MOVX", "http://127.0.0.1:10101/")
     webview.start(debug=True)
+
+
+def start_app(debug=False, reload=False):
+    print("Starting Movx Application")
+    start_waved()
+
+    config = uvicorn.Config(ENTRY_POINT, port=8000, log_level="warning", reload=reload)
+    instance = UvicornServer(config=config)
+    instance.start()
+
+    webview.create_window("MOVX", LOCAL_URL)
+    webview.start(debug=debug)

@@ -1,5 +1,7 @@
 from collections.abc import MutableMapping, MutableSequence
-
+import sys
+import json
+from pathlib import Path
 
 DEFAULT_CHECK_PROFILE = {
     "criticality": {
@@ -39,6 +41,25 @@ DEFAULT_CHECK_PROFILE = {
     "bypass": ["check_assets_pkl_hash"],
 }
 
+check_profile_folder = Path.home() / ".movx" / "check_profiles"
+
+default_check_profile = check_profile_folder / "default.json"
+
+if not check_profile_folder.exists():
+    check_profile_folder.mkdir()
+
+if not default_check_profile.exists():
+    with open(default_check_profile, "w") as fp:
+        json.dump(DEFAULT_CHECK_PROFILE, fp)
+
+def get_available_check_profiles():
+    profiles = []
+
+    for f in check_profile_folder.iterdir():
+        if f.is_file():
+            profiles.append(f)
+
+    return profiles
 
 def _flat_gen(d, parent_key=None):
     for k, v in d.items():
@@ -68,3 +89,30 @@ def finditem(dic, key, value):
                 for e in v:
                     ret.extend(finditem(e, key, value))
     return ret
+
+def is_linux():
+    return sys.platform.startswith("linux")
+
+def is_win():
+    return sys.platform.startswith("win")
+
+
+def check_report_to_dict(checkreport):
+
+    report = checkreport.to_dict()
+
+    report["succeeded"] = [s.to_dict() for s in checkreport.checks_succeeded()]
+    report["fails"] = [f.to_dict() for f in checkreport.checks_failed()]
+    report["errors"] = [
+        v.to_dict()
+        for v in checkreport.checks_failed()
+        if v.errors[0].criticality == "ERROR"
+    ]
+    report["warnings"] = [
+        v.to_dict()
+        for v in checkreport.checks_failed()
+        if v.errors[0].criticality == "WARNING"
+    ]
+    report["bypassed"] = [b.to_dict() for b in checkreport.checks_bypassed()]
+
+    return report

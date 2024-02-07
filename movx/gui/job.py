@@ -66,3 +66,15 @@ async def task_detail_layout(q: Q, id: int):
         )
 
     await q.page.save()
+
+@on()
+def update_hcjob_notes():
+    pass
+
+@on()
+def update_hcjob_picture():
+    pass
+
+@on()
+def update_hcjob_sound():
+    pass

@@ -1,37 +1,68 @@
 import time
 from pathlib import Path
 
-from sqlalchemy import select, delete as _delete
-from movx.core.db import Location, DCP, session, Session
+import httpx
+from sqlalchemy import select, delete as _delete, and_
+from movx.core.db import Location, DCP, LocationType, Session
 
+def scan_agent(uri, path):
 
-def scan(location):
+    paths = []
+
+    uri = "http://%s/scan" % uri
+
+    try:
+        r = httpx.get(uri, params={"path": path})
+        if r.status_code == 200:
+            paths = r.json()
+        else:
+            raise Exception("Wrong response: %s" % r)
+    except Exception as e:
+        print("Error while scanning %s" % uri)
+        print(e)
+        raise e
+
+    return [ Path(p) for p in paths ]
+
+def scan_local(path):
     """
     Scan a location and create DCP.
     """
-    location.dcps_found = 0
 
-    path = Path(location.path).resolve().absolute()
+    path = Path(path).resolve().absolute()
 
     assetmaps = list(path.glob("**/ASSETMAP*"))
+    
+    return [ am.parent for am in assetmaps ]
 
-    location.dcps_founds = len(list(assetmaps))
+def scan(location):
+
+    if location.type == LocationType.Local:
+        return scan_local(location.path)
+    if location.type == LocationType.Agent:
+        return scan_agent(location.uri, location.path)
+    else:
+        raise Exception("Cannot scan Location %s: Type Unknown" % location.name)
+
+def scan_and_add(location):
+
+    paths = scan(location)
+    dcps = []
+
+    location.dcps_founds = len(list(dcps))
 
     location.last_scan = time.time()
 
-    dcps = []
-
-    for path in assetmaps:
-        dcp = DCP.filter(DCP.path == str(path.parent)).first()
+    for path in paths:
+        dcp = DCP.filter(and_(DCP.path == path, DCP.location.has(id=location.id))).first()
 
         if not dcp:
-            dcp = DCP(location=location, path=str(path.parent), title=path.parent.name)
+            dcp = DCP(location=location, path=path, title=Path(path).name)
             dcp.add()
 
         dcps.append(dcp)
 
     return dcps
-
 
 def scan_all():
     """

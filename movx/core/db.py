@@ -1,3 +1,4 @@
+import socket
 import uuid
 import time
 import inspect
@@ -33,14 +34,11 @@ from sqlalchemy.orm import (
 
 db_path = Path.home() / ".movx" / "movx.db"
 
-# db_path.unlink()
+#db_path.unlink()
 
 db_url = "sqlite:///%s" % db_path.absolute()
 
-engine = None
 Session = None
-session = None
-session_factory = None
 
 make_versioned(user_cls=None)
 
@@ -66,6 +64,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
         with Session() as session:
             session.add(self)
             session.commit()
+        return self
 
     def delete(self):
         """
@@ -84,6 +83,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
                 self.__table__.update().where(self.__class__.id == self.id).values(args)
             )
             session.commit()
+        return self
 
     @classmethod
     def get(self=None, id=None):
@@ -95,24 +95,28 @@ class Base(MappedAsDataclass, DeclarativeBase):
         - Called on a Class get all the objects from this object table
         OR get a particular object if the id parameter is provided
         """
+        ret = None
         with Session() as session:
             if inspect.isclass(self):
                 if id:
-                    return session.get(self, id)
+                    ret = session.get(self, id)
                 else:
-                    return session.scalars(select(self)).all()
+                    ret = session.scalars(select(self)).all()
             else:
-                return session.get(self.__class__, self.id)
+                ret = session.get(self.__class__, self.id)
+        return ret
 
     @classmethod
     def get_all(cls):
         """
         get all objects of this same class from the DB
         """
+        ret = []
         with Session() as session:
-            return session.scalars(
+            ret = session.scalars(
                 select(cls), execution_options={"prebuffer_rows": True}
             ).all()
+        return ret
 
     @classmethod
     def clear(cls):
@@ -128,10 +132,12 @@ class Base(MappedAsDataclass, DeclarativeBase):
         """
         Filter query on this object class
         """
+        ret = []
         with Session() as session:
-            return session.scalars(
+            ret = session.scalars(
                 select(cls).filter(expr), execution_options={"prebuffer_rows": True}
             )
+        return ret
 
     @contextmanager
     def fresh(self):
@@ -165,7 +171,18 @@ class Tags(Base):
     name: Mapped[str] = mapped_column(unique=True)
     color: Mapped[str] = mapped_column(unique=True)
 
-
+    #@validates("name")
+    #def validate_path(self, key, name):
+    #    if len(name) < 3:
+    #        raise ValueError("Not a valid name: %s" % name)
+    #    return name
+    #
+    #@validates("color")
+    #def validate_path(self, key, color):
+    #    if not color:
+    #        raise ValueError("Not a valid color: %s" % name)
+    #    return color
+    
 class Status(Base):
     """
     A DCP status
@@ -180,6 +197,7 @@ class Status(Base):
 class LocationType(enum.Enum):
     Local = 1
     NetShare = 2
+    Agent = 0
 
 
 class Location(Base):
@@ -194,18 +212,25 @@ class Location(Base):
     last_scan: Mapped[float] = mapped_column(
         insert_default=time.time(), default=time.time()
     )
-    netshare: Mapped[Optional[str]] = mapped_column(default="")
+    uri: Mapped[Optional[str]] = mapped_column(default="")
     type: Mapped[Optional[LocationType]] = mapped_column(default=LocationType.Local)
 
     # dcps: Mapped[List["DCP"]] = relationship(
     #    back_populates="location", default_factory=list
     # )
 
-    @validates("path")
-    def validate_path(self, key, path):
-        if not Path(path).exists():
-            raise ValueError("Path %s do not exist" % Path(path).absolute())
-        return path
+    def validate(self):
+        if self.type == LocationType.Local:
+            if not Path(self.path).exists():
+                raise ValueError("Path %s do not exist" % Path(self.path).absolute())
+        elif self.type == LocationType.Agent:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(2) #Timeout in case of port not open
+            try:
+                s.connect((self.uri, 11011)) #Port ,Here 22 is port 
+            except:
+                raise ValueError("URI %s do not contain a MovX agent Running or is blocked by network firewall" % Path(self.uri).absolute())
+        return True
 
     def dcps(self):
         """
@@ -379,7 +404,7 @@ class Job(Base):
     status: Mapped[JobStatus] = mapped_column(default=JobStatus.created)
 
     description: Mapped[Optional[str]] = mapped_column(default="")
-    progress: Mapped[Optional[int]] = mapped_column(insert_default=-1, default=-1)
+    progress: Mapped[Optional[int]] = mapped_column(insert_default=0, default=0)
     elapsed_time_s: Mapped[Optional[int]] = mapped_column(insert_default=0, default=0)
     created_at: Mapped[Optional[float]] = mapped_column(
         insert_default=time.time(), default=time.time()
@@ -407,20 +432,21 @@ class Job(Base):
     def is_running(self):
         return True if self.status() == "running" else False
 
+print("Configuring Database...", end="")
 
 configure_mappers()
 
 engine = create_engine(db_url)
 Session = sessionmaker(bind=engine, expire_on_commit=False)
-Scoped_Session = scoped_session(session_factory)
+#Scoped_Session = scoped_session(session_factory)
 
 Base.metadata.create_all(engine)
 
+anonymous = User("anonymous", avatar="anonymous")
 
+print("OK")
 def reset_db():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
-
-anonymous = User("anonymous", avatar="anonymous")
 # anonymous.add()

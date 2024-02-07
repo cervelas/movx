@@ -1,5 +1,5 @@
 from h2o_wave import Q, ui, on
-from movx import core
+from movx import core, WAVE_DATA_PATH
 from movx.gui import setup_page
 from movx.core.db import DCP, Tags
 from movx.gui.cards.dcp import add_infos_cards
@@ -25,13 +25,28 @@ async def dcp_parse_action(q):
 
 @on()
 async def dcp_probe_action(q):
-    core.dcps.probe(DCP.get(q.args.dcp_probe_action))
+    kdm = q.args.kdm_probe_upload[0] if q.args.kdm_probe_upload else None
+    if kdm:
+        kdm = WAVE_DATA_PATH / kdm[4:]
+
+    pkey = q.args.pkey_probe_upload[0] if q.args.pkey_probe_upload else None
+    if pkey:
+        pkey = WAVE_DATA_PATH / pkey[4:]
+
+    core.dcps.probe(DCP.get(q.args.dcp_probe_action), 
+                    kdm = kdm, pkey = pkey)
     await show_dcp(q, q.args.dcp_probe_action)
 
 
 @on()
 async def dcp_check_action(q):
-    core.dcps.check(DCP.get(q.args.dcp_check_action))
+    print("OV : %s " % q.args.ov_check_choice)
+    dcp = DCP.get(q.args.dcp_check_action)
+    if dcp.package_type == "VF":
+        ov = DCP.get(q.args.ov_check_choice)
+        core.dcps.check(dcp, ov = ov)
+    else:
+        core.dcps.check(dcp)
     await show_dcp(q, q.args.dcp_check_action)
 
 
@@ -42,13 +57,7 @@ async def show_dcp(q: Q, id):
     if dcp:
         setup_page(q, "DCP " + dcp.title)
 
-        q.client.current_dcp = dcp
-
         add_infos_cards(q, dcp)
-
-        q.client.parse_report_id = q.args.parse_report_id or 0
-
-        q.client.check_report_id = q.args.check_report_id or 0
 
         # add_parse_cards(q, dcp, q.client.parse_report_id)
 

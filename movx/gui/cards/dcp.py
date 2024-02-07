@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from h2o_wave import ui
+from h2o_wave import Q, ui
 
 from movx.core.db import Tags, JobType, JobStatus
 from movx.gui import (
@@ -14,6 +14,7 @@ from movx.gui import (
 
 def add_infos_cards(q, dcp):
     add_dcp_header_card(q, dcp)
+    #dcp_infos_card(q, dcp)
     add_dcp_parse_card(q, dcp)
     add_dcp_probe_card(q, dcp)
     add_dcp_check_card(q, dcp)
@@ -145,7 +146,7 @@ def add_dcp_header_card(q, dcp):
     q.page.add(
         "dcp_header",
         ui.form_card(
-            box=ui.box("infobar"),
+            box=ui.box("header"),
             items=[
                 ui.inline(
                     justify="between",
@@ -178,20 +179,28 @@ def add_dcp_parse_card(q, dcp):
     else:
         job = jobs[0]
         if job.status == JobStatus.started:
-            job_items = [ui.text_l("Running...")]
+            job_items = [ui.text_l("Running... (%s%%)" % job.progress * 100)]
         else:
-            st = datetime.fromtimestamp(job.finished_at)
-            job_items = [
-                ui.text(
-                    "[Last Parse Job %s](#job/%s)"
-                    % (st.strftime("%m/%d/%Y %H:%M:%S"), job.id)
-                )
-            ]
+            if job.finished_at > 0:
+                st = datetime.fromtimestamp(job.finished_at)
+                job_items = [
+                    ui.text(
+                        "[Last Parse Job %s](#job/%s)"
+                        % (st.strftime("%m/%d/%Y %H:%M:%S"), job.id)
+                    )
+                ]
+            else:
+                job_items = [
+                    ui.text(
+                        "[Job in Progress (%s%%)](#job/%s)"
+                        % (job.progress * 100, job.id)
+                    )
+                ]
 
     q.page.add(
         "dcp_parse_card",
         ui.form_card(
-            box=ui.box("content", size=3),
+            box=ui.box("infobar"),
             items=[
                 ui.inline(
                     items=[ui.text_l("Parse")]
@@ -259,41 +268,75 @@ def add_dcp_probe_card(q, dcp):
             ]
 
     items = [
-        ui.inline(
-            items=[ui.text_l("Probe")]
+        ui.inline([ui.text_l("Probe")]
             + job_items
-            + [ui.button(name="dcp_probe_action", label="Probe", value=str(dcp.id))]
-        )
+            + [     ui.button(name="dcp_probe_action", label="Probe", value=str(dcp.id)),
+                    #ui.inline([
+                    #    ui.text('KDM'),
+                    #    ui.file_upload(name='kdm_probe_upload', compact=True)
+                    #], justify="end"),
+                    #ui.inline([
+                    #    ui.text('Private Key'),
+                    #    ui.file_upload(name='pkey_probe_upload', compact=True),
+                    #], justify="end"),
+                ]
+            )
     ] + items
 
     q.page.add(
         "dcp_probe_card",
         ui.form_card(
-            box=ui.box("content"),
+            box=ui.box("infobar"),
             items=items,
         ),
     )
 
 
-def add_dcp_check_card(q, dcp):
+def add_dcp_check_card(q: Q, dcp):
+
+    jobs = dcp.jobs(type=JobType.check)
+
+    job_items = []
+    if len(jobs) == 0:
+        job_items = [ui.text_l("DCP Not Checked")]
+    else:
+        job = jobs[0]
+        if job.status == JobStatus.started:
+            job_items = [ui.text_l("Running...")]
+        else:
+            st = datetime.fromtimestamp(job.finished_at)
+            job_items = [
+                ui.text(
+                    "[Last Check Job %s](#job/%s) Result %s"
+                    % (st.strftime("%m/%d/%Y %H:%M:%S"), job.id, "PASS" if job.result.get("valid") else "FAIL" )
+                )
+            ]
+
+    check_options = []
+
+    if dcp.package_type == "VF":
+        check_options +=  [ ui.text_l("with OV"),
+                            ui.dropdown("ov_check_choice", choices=[ 
+                                ui.choice(name=str(ov_dcp.id), label=ov_dcp.title) 
+                                for ov_dcp in dcp.movie.ovs() ],
+                            width = "600px") ]
     q.page.add(
         "dcp_check_card",
         ui.form_card(
-            box=ui.box("content"),
+            box=ui.box("infobar", size=0),
             items=[
                 ui.inline(
-                    items=[
+                    items=[ui.text_l("Check")]
+                    + job_items
+                    + [
                         ui.button(
                             name="dcp_check_action", label="Check", value=str(dcp.id)
                         ),
-                    ]
+                    ] + check_options
                 ),
-                # ui.text_s(dcp.path),
-                # ui.text(make_markdown_table(infos.keys(), [ infos.values() ]))
             ],
         ),
     )
-
 
 def dcp_infos_card(q, dcp):
     q.page.add(
@@ -369,7 +412,7 @@ def dcp_infos_card(q, dcp):
     )
 
     q.page.add(
-        "test34",
+        "test3s4",
         ui.form_card(
             box=ui.box("infobar"),
             items=[
@@ -431,7 +474,7 @@ def dcp_infos_card(q, dcp):
     )
 
     q.page.add(
-        "dcp_header",
+        "dcp_header2",
         ui.form_card(
             box=ui.box("infobar", size=0),
             items=[

@@ -1,69 +1,117 @@
 import multiprocessing
 import os
+import signal
 import subprocess
 import locale
 from pathlib import Path
 import sys
+import time
 import webbrowser
 import logging
 
 from pathtub import ensure
 import uvicorn
-import webview
 
-from movx.core import db
+from movx.core import is_linux, is_win
+
+current_path = Path(__file__).parent
 
 SERVER_MODE = True
 APP_MODE = False
 
 WIN_WAVE_FOLDER = Path(__file__).parent / "vendor" / "wave-1.0.0-win-amd64"
-LINUX_WAVE_FOLDER = Path(__file__).parent / "vendor" / "wave-0.24.2-linux-amd64"
+LINUX_WAVE_FOLDER = Path(__file__).parent / "vendor" / "wave-1.0.0-linux-amd64"
+
+WAVE_PATH = LINUX_WAVE_FOLDER
+
+if is_win(): 
+    WAVE_PATH = WIN_WAVE_FOLDER
+
+WAVE_DATA_PATH = WAVE_PATH / "data" / "f"
 
 ENTRY_POINT = "movx.gui.main:main"
 
-LOCAL_ADDR = "http://127.0.0.1:10101/"
+LOCAL_ADDR = "127.0.0.1"
+LOCAL_PORT = 10101
 
-current_path = Path(__file__).parent
+LOCAL_URL = "http://" + LOCAL_ADDR + ":" + str(LOCAL_PORT)
 
+WIN_DEPS = {
+    "asdcplib": current_path / "./vendor/asdcplib-2.7.19-tools/",
+    "mediainfo": current_path / "./vendor/MediaInfo_CLI_22.12_Windows_x64/",
+    "sox": current_path / "./vendor/sox-14.4.2-win32/sox-14.4.2/",
+} 
 
 locale.setlocale(locale.LC_ALL, "")
 
 logging.basicConfig(
-    format="%(levelname)s\t[%(asctime)s]\t%(message)s", level=logging.INFO
+    format="%(levelname)s\t[%(asctime)s]\t%(message)s", level=logging.WARNING
 )
 
-if sys.platform.startswith("win"):
-    ensure(str(Path(current_path / "./vendor/asdcplib-2.7.19-tools/").absolute()))
-    ensure(
-        str(Path(current_path / "./vendor/MediaInfo_CLI_22.12_Windows_x64/").absolute())
-    )
-    ensure(str(Path(current_path / "./vendor/sox-14.4.2-win32/sox-14.4.2/").absolute()))
 
+def shutdown(sig, frame):
+    print("movx shutting down...")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, shutdown)
+
+def include_deps():
+    print("checking dependencies... ", end="")
+
+    if is_win():
+        for n, p in WIN_DEPS.items():            
+            if p.is_dir():
+                ensure(str(p.resolve()))
+            else:
+                print("Fatal: %s dependency not found" % n)
+                exit(0)
+
+    if is_linux():
+        if subprocess.call(["hash", "asdcp-info"]) + subprocess.call(["hash", "asdcp-test"]) > 0:
+            print("Fatal Error: Please install 'asdcplib' package on this system")
+            exit(0)
+        
+        if subprocess.call(["hash", "mediainfo"]) > 0:
+            print("Fatal Error: Please install 'mediainfo' package on this system")
+            exit(0)
+
+        if subprocess.call(["hash", "sox"]) > 0:
+            print("Fatal Error: Please install 'sox' package on this system")
+            exit(0)
+    
+    print("OK")
+
+include_deps()
 
 def start_waved(logs=False):
+    from movx.core import db, locations, dcps
     print("starting Wave Server")
     os.environ["H2O_WAVE_NO_LOG"] = "0" if logs else "1"
     cwd = os.getcwd()
     waved_exe = "waved"
-    waved_path = LINUX_WAVE_FOLDER
-    if sys.platform.startswith("win"):
+    if is_win(): 
         waved_exe = "waved.exe"
-        waved_path = WIN_WAVE_FOLDER
-    os.chdir(waved_path)
-    path = waved_path / waved_exe
+    os.chdir(WAVE_PATH)
+    path = WAVE_PATH / waved_exe
     assets_path = (
         "/assets/@%s" % "d:/dev/movx/movx/assets"
     )  # (Path(__file__).parent / "assets/")
     print(assets_path)
-    subprocess.Popen([path.absolute(), "0.0.0.0", "-public-dir", assets_path])
+    try:
+        subprocess.Popen([path.absolute(), LOCAL_ADDR, "-public-dir", assets_path])
+    except Exception as e:
+        print("Fatal Error while starting waved server: %s" % e)
+        exit(0)
     os.chdir(cwd)
 
 
 class UvicornServer(multiprocessing.Process):
     def __init__(self, config):
         super().__init__()
-        self.server = uvicorn.Server(config=config)
         self.config = config
+        self.server = uvicorn.Server(config=config)
+        self.server.install_signal_handlers()
+        self.daemon = True
 
     def stop(self):
         self.terminate()
@@ -73,24 +121,19 @@ class UvicornServer(multiprocessing.Process):
 
 
 def start_serve(log_level="warning", reload=False, browse=False):
-    print("Startin movx in Server Mode")
+    print("Startin MovX Server")
     start_waved()
     if browse:
-        webbrowser.open(LOCAL_ADDR)
+        webbrowser.open(LOCAL_URL)
     else:
         print("")
     uvicorn.run(ENTRY_POINT, log_level=log_level, reload=reload)
 
 
-def start_app(debug=False, reload=False):
-    print("Starting movx in Application Mode")
-    start_waved()
 
-    config = uvicorn.Config(ENTRY_POINT, port=8000, log_level="warning", reload=reload)
+def start_agent(host="0.0.0.0", port=11011, debug=False):
+    
+    config = uvicorn.Config("movx.core.agent:app", host=host, port=port, log_level="warning")
     instance = UvicornServer(config=config)
-    instance.start()
 
-    SERVER_MODE = False
-    APP_MODE = True
-    webview.create_window("MOVX", LOCAL_ADDR)
-    webview.start(debug=debug)
+    instance.start()

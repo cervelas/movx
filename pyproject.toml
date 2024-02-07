@@ -9,7 +9,7 @@ build-backend = "nuitka.distutils.Build"
 [project]
 name = "movx"
 version = "1.0.0"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 dependencies = [
     "clairmeta",
     "h2o_wave",
@@ -17,6 +17,9 @@ dependencies = [
     "click",
     "mkdocstrings-python",
     "pywebview",
+    "pathtub",
+    "SQLAlchemy",
+    "SQLAlchemy-Continuum",
 ]
 
 [project.scripts]

@@ -3,6 +3,7 @@ import logging
 from h2o_wave import main, app, Q, ui, on, run_on, copy_expando, handle_on
 
 from movx.gui import (
+    notif,
     setup_page,
     dcps,
     dcp,
@@ -38,6 +39,7 @@ async def serve(q: Q):
         await q.page.save()
 
     except Exception as error:
+        notif(q, str(error), "error")
         await show_error(q, error=str(error))
 
 

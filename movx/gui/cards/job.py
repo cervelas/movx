@@ -28,9 +28,9 @@ def job_progress(job):
         ft = datetime.fromtimestamp(job.finished_at)
         items += [ui.text_s("Finished @ %s" % ft.strftime("%m/%d/%Y %H:%M:%S"))]
     elif job.progress > 0:
-        items += [ui.text_s("ETA %s" % timedelta(seconds=round(job.eta())))]
+        items += [ui.text_s("Time remaining %s" % timedelta(seconds=round(job.eta())))]
 
-    items += [ui.text_s("Duration %s" % timedelta(seconds=job.duration()))]
+    items += [ui.text_s("Elapsed %s" % timedelta(seconds=job.duration()))]
 
     return [
         ui.inline(
@@ -44,16 +44,21 @@ def job_progress(job):
         ),
     ]
 
+def add_human_check_cards():
+    general_notes_cards()
+    conformity_check_card()
+    check_actions_cards()
 
 def add_parse_cards(q, parse_report):
     add_am_cards(q, parse_report)
     add_pkl_cards(q, parse_report)
     add_cpl_cards(q, parse_report)
 
-
 def add_probe_cards(q, parse_report):
     add_reels_probe_cards(q, parse_report)
-
+    add_am_cards(q, parse_report)
+    add_pkl_cards(q, parse_report)
+    add_cpl_cards(q, parse_report)
 
 def add_raw_result_card(q, result):
     q.page.add(

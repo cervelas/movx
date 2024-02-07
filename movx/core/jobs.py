@@ -1,6 +1,7 @@
 import time
 import threading
 import traceback
+from typing import Callable
 
 from sqlalchemy import select
 from sqlalchemy.orm.session import make_transient
@@ -17,7 +18,7 @@ class JobTask(threading.Thread):
     poll_interval_s = 2
     prob_cb = False
 
-    def __init__(self, job: db.Job, task_func, **args):
+    def __init__(self, job: db.Job, task_func: Callable, **args):
         threading.Thread.__init__(self)
         self.job = job
         self.job.__last_poll = 0
@@ -49,7 +50,6 @@ class JobTask(threading.Thread):
         try:
             with self.job.fresh() as j:
                 j.update(
-                    progress=0,
                     status=db.JobStatus.started,
                     started_at=time.time(),
                 )
