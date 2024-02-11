@@ -173,7 +173,6 @@ def startup():
 
 routes = [
     Route('/', index),
-    Route('/path', path),
     Route('/browse', browse),
     Route('/scan', scan),
     Route('/job_start', job_start),
