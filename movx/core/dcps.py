@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm.session import make_transient
 
 import clairmeta
-from movx.core import check_report_to_dict
+from movx.core import check_report_to_dict, init_check_profile
 
 from movx.core.db import DCP, Job, LocationType, Movie, Session, User, JobType
 from movx.core import jobs, finditem, check_profile_folder
@@ -186,12 +186,14 @@ def probe(dcp, kdm=None, pkey=None):
     return job.id
 
 
-def check_job(job, dcp, ov_dcp_path=None, profile="default"):
+def check_job(job, dcp, ov_dcp_path=None, profile="default.json"):
     """
     Check a DCP
     """
     report = {}
     status = False
+
+    init_check_profile()
 
     if profile is None:
         with open(profile, "r") as fp:

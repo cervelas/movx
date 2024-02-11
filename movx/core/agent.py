@@ -13,7 +13,7 @@ from starlette.responses import PlainTextResponse, JSONResponse
 from starlette.routing import Route, Mount, WebSocketRoute
 from starlette.background import BackgroundTask
 
-from movx.core import is_linux, is_win, DEFAULT_CHECK_PROFILE, check_report_to_dict
+from movx.core import is_linux, is_win, DEFAULT_CHECK_PROFILE, check_report_to_dict, version
 from movx.gui import get_linux_drives, get_windows_drives
 
 def get_ip():
@@ -98,10 +98,7 @@ def check(path, ov_dcp_path=None, profile=None):
     print("parse finished on %s" % path)
 
 def index(request):
-    return PlainTextResponse("MovX Agent is working, root_path is %s " % os.environ["MOVX_AGENT_ROOT_PATH"])
-
-def path(request):
-    return JSONResponse({ "root_path": root_path() })
+    return JSONResponse({ "root_path": root_path(), "version": version })
 
 def browse(request):
     path = request.query_params.get('path')

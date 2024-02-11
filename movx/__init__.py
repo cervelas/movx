@@ -88,17 +88,18 @@ def start_waved(logs=False):
     print("starting Wave Server")
     os.environ["H2O_WAVE_NO_LOG"] = "0" if logs else "1"
     cwd = os.getcwd()
-    waved_exe = "./waved"
+    waved_exe = "waved"
     if is_win(): 
         waved_exe = "waved.exe"
     os.chdir(WAVE_PATH)
     path = WAVE_PATH / waved_exe
     assets_path = (
-        "/assets/@%s" % "d:/dev/movx/movx/assets"
+       "/assets/@%s" % "d:/dev/movx/movx/assets"
     )  # (Path(__file__).parent / "assets/")
-    print(assets_path)
+    subp = [path, LOCAL_ADDR] # "-public-dir", assets_path]
+    print(subp)
     try:
-        subprocess.Popen([waved_exe, LOCAL_ADDR, "-public-dir", assets_path])
+        subprocess.Popen(subp)
     except Exception as e:
         print("Fatal Error while starting waved server: %s" % e)
         exit(0)
@@ -128,8 +129,6 @@ def start_serve(log_level="warning", reload=False, browse=False):
     else:
         print("")
     uvicorn.run(ENTRY_POINT, log_level=log_level, reload=reload)
-
-
 
 def start_agent(host="0.0.0.0", port=11011, debug=False):
     

@@ -35,8 +35,7 @@ async def settings(q: Q):
     except Exception as e:
         notif(q, str(e), "error")
 
-    if q.args.dir_cwd or q.args.prescan_location:
-        await show_add_location_panel(q)
+    await show_add_location_panel(q)
 
     #await debug_card(q)
 
@@ -62,9 +61,12 @@ async def add_location(q: Q, parse=True):
         if parse:
             for dcp in _dcps:
                 dcps.parse(dcp)
+                
+        q.client.show_add_location_panel = False
         
         await settings(q)
     except Exception as e:
+        q.client.show_add_location_panel = True
         notif(q, "Error: %s" % str(e), "error")
 
 @on()
@@ -94,6 +96,8 @@ async def update_location(q):
 async def prescan_location(q):
 
     copy_expando(q.args, q.client)
+    
+    q.client.show_add_location_panel = True
 
     type = db.LocationType(int(q.client.location_type))
 

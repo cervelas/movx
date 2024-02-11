@@ -1,9 +1,27 @@
 import time
 from pathlib import Path
+import socket
 
 import httpx
-from sqlalchemy import select, delete as _delete, and_
+from sqlalchemy import delete as _delete, and_
 from movx.core.db import Location, DCP, LocationType, Session
+
+def scan_network(subnet, port):
+
+    def connect(hostname, port):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket.setdefaulttimeout(0.5)
+        result = sock.connect_ex((hostname, port))
+        sock.close()
+        result == 0
+
+    subnet = ".".join(subnet.split(".")[:2])
+
+    for i in range(0,255):
+        res = connect("%s." % str(i), 11011)
+        if res:
+            print("Device found at: ", "192.168.1."+str(i) + ":"+str(22))
+
 
 def scan_agent(uri, path):
 
@@ -47,19 +65,22 @@ def scan(location):
 def scan_and_add(location):
 
     paths = scan(location)
-    dcps = []
+    dcps = list(DCP.filter(DCP.location.has(id=location.id)).all())
 
-    location.dcps_founds = len(list(dcps))
+    location.dcps_founds = len(list(paths))
 
     location.last_scan = time.time()
 
+    for dcp in dcps:
+        if dcp.path in paths:
+            dcp.update( status = "present")
+            paths.remove(dcp.path)
+        else:
+            dcp.update( status = "notfound")
+
     for path in paths:
-        dcp = DCP.filter(and_(DCP.path == path, DCP.location.has(id=location.id))).first()
-
-        if not dcp:
-            dcp = DCP(location=location, path=path, title=Path(path).name)
-            dcp.add()
-
+        dcp = DCP(location=location, path=path, title=Path(path).name)
+        dcp.add()
         dcps.append(dcp)
 
     return dcps

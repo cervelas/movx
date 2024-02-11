@@ -170,29 +170,20 @@ class Tags(Base):
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
     name: Mapped[str] = mapped_column(unique=True)
     color: Mapped[str] = mapped_column(unique=True)
+    type: Mapped[Optional[str]] = mapped_column(default="")
 
-    #@validates("name")
-    #def validate_path(self, key, name):
-    #    if len(name) < 3:
-    #        raise ValueError("Not a valid name: %s" % name)
-    #    return name
-    #
+    @validates("name")
+    def validate_name(self, key, name):
+        if len(name) < 3:
+            raise ValueError("Not a valid name: %s" % name)
+        return name
+    
     #@validates("color")
     #def validate_path(self, key, color):
     #    if not color:
     #        raise ValueError("Not a valid color: %s" % name)
     #    return color
     
-class Status(Base):
-    """
-    A DCP status
-    """
-
-    __tablename__ = "statuses"
-    id: Mapped[int] = mapped_column(init=False, primary_key=True)
-    name: Mapped[str] = mapped_column(unique=True)
-    color: Mapped[str] = mapped_column(unique=True)
-
 
 class LocationType(enum.Enum):
     Local = 1
@@ -337,12 +328,6 @@ class DCP(Base):
     kind: Mapped[Optional[str]] = mapped_column(default="")
     size: Mapped[Optional[int]] = mapped_column(default=0)
     notes: Mapped[Optional[str]] = mapped_column(default="")
-
-    @validates("path")
-    def validate_path(self, key, path):
-        if not Path(path).exists():
-            raise ValueError("Path %s do not exist" % Path(path).absolute())
-        return path
 
     def __post_init__(self):
         self.uid = uuid.uuid5(uuid.NAMESPACE_X500, str(self.path))

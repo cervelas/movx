@@ -1,7 +1,7 @@
 import os
 import json
 from pathlib import Path
-from h2o_wave import Q, ui, on
+from h2o_wave import Q, ui, on, copy_expando
 
 from movx.core import DEFAULT_CHECK_PROFILE, db, get_available_check_profiles, is_linux, is_win
 from movx.gui import convert_size, get_windows_drives, get_linux_drives
@@ -44,10 +44,7 @@ def locations_list_card(locations):
                 items=[
                     ui.text_xl("DCP Locations"),
                     ui.button(
-                        name="show_add_location_panel", label="Add Local Folder", icon="add"
-                    ),
-                    ui.button(
-                        name="show_add_agent_panel", label="Add MovX Agent", icon="add"
+                        name="show_add_location_panel", label="Add", icon="add"
                     ),
                 ]
             ),
@@ -74,44 +71,47 @@ def locations_list_card(locations):
         ],
     )
 
-@on()
-async def show_add_agent_panel(q):
-    q.page["meta"].side_panel = ui.side_panel(
-        title="Add an agent",
-        items=[
-            ui.dropdown(name="location_type", value=str(db.LocationType.Agent.value), choices=[
-                ui.Choice(name=str(db.LocationType.Local.value), label=db.LocationType.Local.name),
-                ui.Choice(name=str(db.LocationType.Agent.value), label=db.LocationType.Agent.name),
-            ], label="Type", required=True),
-            ui.textbox(name="location_name", label="Name", required=True),
-            ui.textbox(name="location_path", label="Path", required=True),
-            ui.textbox(name="location_uri", label="Uri", required=False),
-            ui.button(name="prescan_location", label="Scan"),
-            ui.button(name="add_location", label="Add"),
-            ui.text(""),
-        ]
-    )
-    await q.page.save()
 
 @on()
 async def show_add_location_panel(q):
-    q.page["meta"].side_panel = ui.side_panel(
-        title="Add a local folder",
-        items=[
-            ui.dropdown(name="location_type", value=str(q.client.location_type), choices=[
-                ui.Choice(name=str(db.LocationType.Local.value), label=db.LocationType.Local.name),
-                ui.Choice(name=str(db.LocationType.Agent.value), label=db.LocationType.Agent.name),
-            ], label="Type", required=True),
-            ui.textbox(name="location_name", label="Name", value=q.client.location_name,required=True),
-            ui.textbox(name="location_path", label="Path", value=q.client.location_path, required=True),
-            ui.textbox(name="location_uri", label="Uri", value=q.client.location_uri, required=True),
-            ui.button(name="prescan_location", label="Scan"),
-            ui.button(name="add_location", label="Add"),
-            ui.text(""),
-        ]
-        + dir_browser(q),
-    )
-    await q.page.save()
+    
+    copy_expando(q.args, q.client)
+
+    if q.client.show_add_location_panel or q.args.show_add_location_panel or q.client.location_type:
+        
+        q.client.show_add_location_panel = True
+
+        items = [ui.dropdown(name="location_type", value=str(q.client.location_type), choices=[
+                    ui.Choice(name=str(db.LocationType.Local.value), label=db.LocationType.Local.name),
+                    ui.Choice(name=str(db.LocationType.Agent.value), label=db.LocationType.Agent.name),
+                ], label="Type", required=True, trigger=True),
+            ]
+        
+        if q.client.location_type == str(db.LocationType.Local.value):
+            items += [
+                ui.textbox(name="location_name", label="Name", value=q.client.location_name,required=True),
+                ui.textbox(name="location_path", label="Path", value=q.client.location_path, required=True, placeholder = "Path on the host"),
+                ui.button(name="prescan_location", label="Scan"),
+                ui.button(name="add_location", label="Add"),
+            ]
+        
+        elif q.client.location_type == str(db.LocationType.Agent.value):
+            items += [
+                ui.textbox(name="location_name", label="Name", value=q.client.location_name,required=True),
+                ui.textbox(name="location_uri", label="Remote Agent ip addr with port", value=q.client.location_uri, 
+                           required=True, placeholder = "Remote agent address (e.g. 127.0.0.1:11011)"),
+                ui.textbox(name="location_path", label="Path", value=q.client.location_path, required=True, placeholder = "Path on the remote"),
+                ui.button(name="prescan_location", label="Scan"),
+                ui.button(name="add_location", label="Add"),
+            ]
+        else:
+            items += [ ui.text("Please select a proper Location Type") ]
+
+        q.page["meta"].side_panel = ui.side_panel(
+            title="Add a local folder",
+            items=items,
+        )
+        await q.page.save()
 
 def update_location_panel(q, loc):
     if loc.type == None:

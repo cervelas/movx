@@ -2,6 +2,9 @@ from collections.abc import MutableMapping, MutableSequence
 import sys
 import json
 from pathlib import Path
+import importlib.metadata
+
+version = importlib.metadata.version('movx')
 
 DEFAULT_CHECK_PROFILE = {
     "criticality": {
@@ -45,12 +48,13 @@ check_profile_folder = Path.home() / ".movx" / "check_profiles"
 
 default_check_profile = check_profile_folder / "default.json"
 
-if not check_profile_folder.exists():
-    check_profile_folder.mkdir()
+def init_check_profile():
+    if not check_profile_folder.exists():
+        check_profile_folder.mkdir()
 
-if not default_check_profile.exists():
-    with open(default_check_profile, "w") as fp:
-        json.dump(DEFAULT_CHECK_PROFILE, fp)
+    if not default_check_profile.exists():
+        with open(default_check_profile, "w") as fp:
+            json.dump(DEFAULT_CHECK_PROFILE, fp)
 
 def get_available_check_profiles():
     profiles = []
@@ -116,3 +120,4 @@ def check_report_to_dict(checkreport):
     report["bypassed"] = [b.to_dict() for b in checkreport.checks_bypassed()]
 
     return report
+
