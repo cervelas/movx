@@ -40,7 +40,7 @@ logger = logging.getLogger("MovX.Agent")
 current_jobs = {}
 
 def index(request):
-    return JSONResponse({ "root_path": str(root_path().resolve()), "version": version })
+    return JSONResponse({ "root_path": str(root_path().abdolute), "version": version })
 
 def parse(path, probe=False, kdm=None, pkey=None):
     """

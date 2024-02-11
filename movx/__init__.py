@@ -111,7 +111,7 @@ class UvicornServer(multiprocessing.Process):
         super().__init__()
         self.config = config
         self.server = uvicorn.Server(config=config)
-        self.server.install_signal_handlers()
+        #self.server.install_signal_handlers()
         self.daemon = True
 
     def stop(self):
@@ -133,6 +133,6 @@ def start_serve(log_level="warning", reload=False, browse=False):
 def start_agent(host="0.0.0.0", port=11011, debug=False):
     
     config = uvicorn.Config("movx.core.agent:app", host=host, port=port, log_level="warning")
-    instance = UvicornServer(config=config)
+    server = uvicorn.Server(config=config)
 
-    instance.start()
+    server.run()

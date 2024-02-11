@@ -30,8 +30,7 @@ def app():
 def agent(path, host, port, debug):
     os.environ["MOVX_AGENT_ROOT_PATH"] = path
     start_agent(host, port, debug)
-    time.sleep(2)
-    input("Press Enter to quit")
+    print("agent started, ctrl-c to quit.")
 
 @main.command()
 @click.option("--deldb", help="delete the DB prior to launch the app", is_flag=True)
