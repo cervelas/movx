@@ -39,6 +39,9 @@ logger = logging.getLogger("MovX.Agent")
 
 current_jobs = {}
 
+def index(request):
+    return JSONResponse({ "root_path": str(root_path().resolve()), "version": version })
+
 def parse(path, probe=False, kdm=None, pkey=None):
     """
     Parse a DCP
@@ -97,8 +100,6 @@ def check(path, ov_dcp_path=None, profile=None):
 
     print("parse finished on %s" % path)
 
-def index(request):
-    return JSONResponse({ "root_path": root_path(), "version": version })
 
 def browse(request):
     path = request.query_params.get('path')
