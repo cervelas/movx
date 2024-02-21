@@ -14,7 +14,7 @@ def main():
 
 
 @main.command()
-def serve(dev):
+def serve():
     start_serve()
 
 
@@ -29,8 +29,8 @@ def app():
 @click.option("--debug", help="Uvicorn debug flag", is_flag=True)
 def agent(path, host, port, debug):
     os.environ["MOVX_AGENT_ROOT_PATH"] = path
+    print("starting agent... ctrl-c to quit.")
     start_agent(host, port, debug)
-    print("agent started, ctrl-c to quit.")
 
 @main.command()
 @click.option("--deldb", help="delete the DB prior to launch the app", is_flag=True)
@@ -42,7 +42,7 @@ def dev(deldb):
     #os.environ["H2O_WAVE_DEBUG"] = "1"
     os.environ["MOVX_AGENT_ROOT_PATH"] = "."
 
-    start_agent("127.0.0.1", 11011, True)
+    start_agent("127.0.0.1", 11011, True, True)
     start_serve(reload=True, browse=True)
 
 
