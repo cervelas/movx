@@ -124,10 +124,13 @@ def add_dcp_parse_card(q, dcp):
     jobs = dcp.jobs(type=JobType.parse)
 
     job_items = []
+    files_items = []
     if len(jobs) == 0:
         job_items = [ui.text_l("DCP Not Parsed")]
     else:
         job_items = [ ui.text_l(f"[Last Parse Job](#job/{jobs[0].id})") ] + job_status_items(jobs[0])
+        files_items = dcp_files_items(jobs[0].result)
+
 
     q.page.add(
         "dcp_parse_card",
@@ -142,7 +145,7 @@ def add_dcp_parse_card(q, dcp):
                         ),
                     ]
                 ),
-            ] + dcp_files_items(jobs[0].result),
+            ] + files_items,
         ),
     )
 
@@ -167,7 +170,7 @@ def add_dcp_probe_card(q, dcp):
 
     job_items = []
     if len(jobs) == 0:
-        job_items = [ui.text_l("DCP Not Parsed")]
+        job_items = [ui.text_l("DCP Not Probed")]
     else:
         job_items = [ ui.text_l(f"[Last Probe Job](#job/{jobs[0].id})") ] +job_status_items(jobs[0])
 
