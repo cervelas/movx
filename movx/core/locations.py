@@ -88,6 +88,7 @@ def __scan(location):
 def scan4dcps(location):
 
     paths = __scan(location)
+    print(paths)
     dcps = list(DCP.filter(DCP.location.has(id=location.id)).all())
 
     location.dcps_founds = len(list(paths))
@@ -97,9 +98,11 @@ def scan4dcps(location):
     for dcp in dcps:
         if Path(dcp.path) in paths:
             dcp.update( status = "present")
-            paths.remove(dcp.path)
+            paths.remove(Path(dcp.path))
         else:
-            dcp.update( status = "notfound")
+            print("NOT FOUND")
+            print(dcp)
+            dcp.delete()
 
     for path in paths:
         dcp = DCP(location=location, path=str(path.resolve()), title=Path(path).name)

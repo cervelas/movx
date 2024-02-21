@@ -126,7 +126,7 @@ async def scan_location(q):
 
     if loc:
         notif(q, "Scan location %s for dcp's..." % loc.name)
-        scan4dcps(loc)
+        _dcps = scan4dcps(loc)
         notif(q, "%s dcps found in location %s" % (len(_dcps), loc.name))
 
 @on()

@@ -40,13 +40,17 @@ def jobs_list_table(jobs):
 
 def gen_jobs_rows(jobs):
     rows = []
+
     for job in jobs:
+        title = "*DCP DELETED*"
+        if job.dcp is not None:
+            title = job.dcp.title
         started_at = time.ctime(job.started_at) if job.started_at > 0 else "error"
         rows.append(
             ui.table_row(
                 name=str(job.id),
                 cells=[
-                    "[%s](#job/%s)" % (job.dcp.title, job.id),
+                    "[%s](#job/%s)" % (title, job.id),
                     job.type.name,
                     job.status.name,
                     started_at,

@@ -31,26 +31,33 @@ async def task_detail_layout(q: Q, id: int):
 
     if job:
 
-        movie_btn = []
-        if job.dcp.movie is not None:
-            movie_btn = [ ui.inline([
-                                ui.button(name="goto_movie", label="%s >" % job.dcp.movie.title, value=str(job.dcp.movie.id)),
-                            ])
-                        ]
-        
-        setup_page(q, "Job Detail %s" % job.dcp.title)
+
+        header = [ ui.text_xl( "DCP DELETED - DCP NO MORE") ]
+
+        if job.dcp is not None:
+
+            setup_page(q, "Job Detail %s" % job.dcp.title)
+            header = [
+                        ui.text_xl(
+                            "%s %s [%s](#dcp/%s) @ [%s](#loc/%s)"
+                            % (job.type.name, job.status.name, job.dcp.title, job.dcp.id, job.dcp.location.name, job.dcp.location.id )
+                        ),
+                    ] 
+
+            if job.dcp.movie is not None:
+                header = +[ ui.inline([
+                                    ui.button(name="goto_movie", label="%s >" % job.dcp.movie.title, value=str(job.dcp.movie.id)),
+                                ])
+                            ]
+        else:
+            setup_page(q, "Job Detail deleted DCP")
         
         q.page["job_detail_%s" % job.id] = ui.form_card(
             box=ui.box("content", size=0),
             items=[
                 ui.inline(
                     justify="between",
-                    items=[
-                        ui.text_xl(
-                            "%s %s [%s](#dcp/%s) @ [%s](#loc/%s)"
-                            % (job.type.name, job.status.name, job.dcp.title, job.dcp.id, job.dcp.location.name, job.dcp.location.id )
-                        ),
-                    ] + movie_btn,
+                    items=header,
                 ),
             ],
         )
