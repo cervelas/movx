@@ -44,11 +44,12 @@ async def dcp_probe_action(q):
 async def dcp_check_action(q):
     print("OV : %s " % q.args.ov_check_choice)
     dcp = DCP.get(q.args.dcp_check_action)
+    profile = q.args.profile_check_choice
     if dcp.package_type == "VF":
         ov = DCP.get(q.args.ov_check_choice)
-        core.dcps.check(dcp, ov = ov)
+        core.dcps.check(dcp, profile = profile, ov = ov)
     else:
-        core.dcps.check(dcp)
+        core.dcps.check(dcp, profile = profile)
     await show_dcp(q, q.args.dcp_check_action)
 
 

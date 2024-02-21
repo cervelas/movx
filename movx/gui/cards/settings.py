@@ -3,9 +3,9 @@ import json
 from pathlib import Path
 from h2o_wave import Q, ui, on
 
-from movx.core import DEFAULT_CHECK_PROFILE, db, get_available_check_profiles, is_linux, is_win
+from movx.core import db, is_linux, is_win
 from movx.gui import get_windows_drives, get_linux_drives
-from movx.core import check_profile_folder
+from movx.core.dcps import get_available_check_profiles
 
 ################
 # TAGS
@@ -221,12 +221,9 @@ async def new_profile_dialog(q: Q):
 
 def check_profile_editor_card(q: Q):
     
-    profiles = []
     editor_items = []
 
-    for f in check_profile_folder.iterdir():
-        if f.is_file():
-            profiles.append(f)
+    profiles = get_available_check_profiles()
 
     if q.args.edited_profile:
 
@@ -248,12 +245,12 @@ def check_profile_editor_card(q: Q):
         
         editor_items = [ 
             ui.text_xl("Edit %s Check Profile" % name), 
-            ui.text_l("Warning Criticality Tests"),
+            ui.text_l("Warning Level Tests"),
             ui.textbox(name='warnings_tests', label='', width="400px",
                         value="\n".join(warnings), height=h(warnings),
                         multiline=True, spellcheck=False),
             
-            ui.text_l("Error Criticality Tests"),
+            ui.text_l("Error Level Tests"),
             ui.textbox(name='errors_tests', label='', 
                         value="\n".join(errors), height=h(errors),
                         multiline=True, spellcheck=False),
@@ -282,7 +279,7 @@ def check_profile_editor_card(q: Q):
             
             ui.dropdown(name="edited_profile", label="Edit existing profile file", trigger=True,
                     placeholder="Select the file to edit", value=q.args.edited_profile,
-                    choices=[ ui.Choice(name=str(f.resolve()), label=f.name) for f in profiles ]),
+                    choices=[ ui.Choice(name=str(f.resolve()), label=f.stem) for f in profiles ]),
 
 
         ] + editor_items

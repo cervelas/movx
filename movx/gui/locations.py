@@ -1,11 +1,12 @@
 import traceback
+from pathlib import Path
 
 from h2o_wave import Q, ui, on, copy_expando
 
 from movx.gui import notif, setup_page
 from movx.core.db import Location, LocationType
 from movx.core import dcps
-from movx.core.locations import scan_local, scan_agent, scan4dcps
+from movx.core.locations import agent_infos, get_root_path, scan_local, scan_agent, scan4dcps
 from movx.gui.cards.locations import location_del_dialog, locations_list_card, show_add_location_panel, update_location_panel
 
 """
@@ -92,18 +93,29 @@ async def prescan_location(q):
     type = LocationType(int(q.client.location_type))
 
     paths = []
+    root_path = []
+    name = ""
 
     if type == LocationType.Local:
         paths = scan_local(q.client.location_path)
+        root_path = Path.cwd()
+        name = "Directory"
     if type == LocationType.Agent:
+        if len(q.client.location_uri) == 0:
+            notif(q, "Empty URI !", "error")
+            return
         paths = scan_agent(q.client.location_uri, q.client.location_path)
+        root_path = agent_infos(q.client.location_uri)["root_path"]
+        name = q.client.location_uri
     
     q.page["meta"].dialog = ui.dialog(
-        title="Prescan Results",
+        title="Prescan Results for %s %s" % (type.name, name),
         name="prescan_dialog",
+        closable=True,
         width="70%",
         items=[
-            ui.text("\n\n".join([ str(p) for p in paths])),
+            ui.text_l("Root path is %s" % root_path),
+            ui.text("\n\n".join([ str(Path(p).relative_to(root_path)) for p in paths])),
         ]
     )
     await q.page.save()

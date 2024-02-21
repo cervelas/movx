@@ -7,13 +7,36 @@ from sqlalchemy import select
 from sqlalchemy.orm.session import make_transient
 
 import clairmeta
-from movx.core import check_report_to_dict, init_check_profile
+from movx import dotmovx
+from movx.core import check_report_to_dict
 
 from movx.core.db import DCP, Job, LocationType, Movie, Session, User, JobType
-from movx.core import jobs, finditem, check_profile_folder
-
+from movx.core import jobs, finditem, DEFAULT_CHECK_PROFILE
 
 clairmeta.logger.set_level(logging.WARNING)
+
+check_profile_folder = dotmovx / "check_profiles"
+
+default_check_profile = check_profile_folder / "default.json"
+
+def init_check_profile():
+    check_profile_folder.mkdir(exist_ok=True)
+
+    if not default_check_profile.exists():
+        with open(default_check_profile, "w") as fp:
+            json.dump(DEFAULT_CHECK_PROFILE, fp)
+
+def get_available_check_profiles():
+    init_check_profile()
+
+    profiles = []
+
+    for f in check_profile_folder.iterdir():
+        if f.is_file():
+            profiles.append(f)
+
+    return profiles
+
 
 def check_all(cb=None):
     """
@@ -111,6 +134,7 @@ def start_poll_agent_job(job, dcp, type, timeout = 3600, data=None):
             r = httpx.get(uri, params={"path": dcp.path})
             if r.status_code == 200:
                 resp = r.json()
+                job.update(progress=resp.get("progress"))
                 if resp.get("status") == "done":
                     ret = resp.get("result", {}).get("report", {})
                     finished = True
@@ -148,6 +172,10 @@ def parse_job(job, dcp, probe=False, kdm=None, pkey=None):
         dcp.update(kind=cpl["ContentKind"])
     else:
         update_movie(dcp, dcp.title.split("_")[0])
+
+    report["movx_parse_probe"] = probe
+    report["movx_parse_kdm"] = kdm
+    report["movx_parse_pkey"] = pkey
 
     job.finished.set()
 
@@ -190,52 +218,56 @@ def probe(dcp, kdm=None, pkey=None):
     return job.id
 
 
-def check_job(job, dcp, ov_dcp_path=None, profile="default.json", kdm=None, pkey=None):
+def check_job(job, dcp, ov_dcp_path=None, profile=None, kdm=None, pkey=None):
     """
     Check a DCP
     """
     report = {}
     status = False
+    _profile = {}
 
-    init_check_profile()
-
-    if profile is None:
-        with open(profile, "r") as fp:
-            profile = json.load(fp)
+    profile = profile or default_check_profile
+    
+    with open(profile, "r") as fp:
+        _profile = json.load(fp)
 
     if dcp.location.type == LocationType.Agent:
-        report = start_poll_agent_job(job, dcp, "check", data={ "ov_dcp_path": ov_dcp_path, "profile": profile, "kdm": kdm, "pkey": pkey })
+        report = start_poll_agent_job(job, dcp, "check", data={ "ov_dcp_path": ov_dcp_path, "profile": _profile, "kdm": kdm, "pkey": pkey })
     elif dcp.location.type == LocationType.Local:
         def check_job_cb(file, current, final, t):
             job.update(progress=current / final)
 
         cm_dcp = clairmeta.DCP(dcp.path, kdm=kdm, pkey=pkey)
         status, check_report = cm_dcp.check(
-            profile=profile, ov_path=ov_dcp_path, hash_callback=check_job_cb
+            profile=_profile, ov_path=ov_dcp_path, hash_callback=check_job_cb
         )
 
         report = check_report_to_dict(check_report)
+    
+    report["movx_check_profile"] = profile.stem
+    report["movx_check_ov"] = str(ov_dcp_path)
+    report["movx_check_kdm"] = str(kdm)
+    report["movx_check_pkey"] = str(pkey)
 
     job.finished.set()
 
     return report
 
 
-def check(dcp, ov=None, profile="default", cb=None):
+def check(dcp, ov=None, profile=None, cb=None):
     """
     Create a Check job for a DCP
     """
+
     job = Job(type=JobType.check, dcp=dcp, author=User.get(1))
 
     job.add()
 
-    # make_transient(dcp)
+    make_transient(dcp)
+
+    init_check_profile()
 
     ov_path = ov.path if ov else None
-
-    profile = check_profile_folder / ("%s.json" % profile)
-    with open(profile, "r") as fp:
-        profile = json.load(fp)
 
     jt = jobs.JobTask(job, check_job, dcp=dcp, ov_dcp_path=ov_path, profile=profile)
     jt.start()

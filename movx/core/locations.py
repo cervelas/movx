@@ -23,21 +23,23 @@ def scan_network(subnet, port):
         if res:
             print("Device found at: ", "192.168.1."+str(i) + ":"+str(22))
 
+def agent_infos(uri):
+    infouri = "http://%s" % uri
+
+    r = httpx.get(infouri)
+    if r.status_code == 200:
+        return r.json()
+    else:
+        raise Exception("Wrong response: %s" % r)
 
 def scan_agent(uri, path):
 
     paths = []
 
-    infouri = "http://%s" % uri
+    agent_version = agent_infos(uri)["version"]
 
-    r = httpx.get(infouri)
-    if r.status_code == 200:
-        check = r.json()
-        print(check)
-        if check["version"] != version:
-            raise Exception("Version mismatch! Agent is %s, host is %s" % (check["version"], version))
-    else:
-        raise Exception("Wrong response: %s" % r)
+    if agent_version != version:
+        raise Exception("Version mismatch! Agent is %s, host is %s" % (agent_version, version))
     
     scanuri = "http://%s/scan" % uri
 
@@ -65,6 +67,15 @@ def scan_local(path):
     
     return [ am.parent for am in assetmaps ]
 
+def get_root_path(location):
+
+    if location.type == LocationType.Local:
+        return Path.cwd()
+    if location.type == LocationType.Agent:
+        return agent_infos()["root_path"]
+    else:
+        raise Exception("Cannot get Root path for %s: Type Unknown" % location.name)
+    
 def __scan(location):
 
     if location.type == LocationType.Local:

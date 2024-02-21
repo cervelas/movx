@@ -49,6 +49,10 @@ logging.basicConfig(
 )
 
 
+dotmovx = Path.home() / ".movx"
+
+dotmovx.mkdir(exist_ok=True)
+
 def shutdown(sig, frame):
     print("movx shutting down...")
     sys.exit(0)
@@ -68,7 +72,7 @@ def include_deps():
 
     if is_linux():
         if subprocess.call(["hash", "asdcp-info"], shell=True) + subprocess.call(["hash", "asdcp-test"], shell=True) > 0:
-            print("Fatal Error: Please install 'asdcplib' package on this system")
+            print("Fatal Error: Please install 'asdcplib' (gihub.com/cincert/asdcplib) package on this system")
             exit(0)
         
         if subprocess.call(["hash", "mediainfo"], shell=True) > 0:

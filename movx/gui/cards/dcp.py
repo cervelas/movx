@@ -3,7 +3,7 @@ from datetime import datetime
 from h2o_wave import Q, ui
 
 from movx.core.db import Tags, JobType, JobStatus
-from movx.core.dcps import by_files_parse_report
+from movx.core.dcps import by_files_parse_report, get_available_check_profiles
 from movx.gui import (
     convert_size,
     md_table,
@@ -201,20 +201,27 @@ def add_dcp_check_card(q: Q, dcp):
 
     jobs = dcp.jobs(type=JobType.check)
 
+    profiles = get_available_check_profiles()
+    
     job_items = []
     if len(jobs) == 0:
         job_items = [ui.text_l("DCP Not Checked")]
     else:
         job_items = [ ui.text_l(f"[Last Check Job](#job/{jobs[0].id})") ] + job_status_items(jobs[0])
 
-    check_options = []
+    check_options = [ ui.dropdown(name="profile_check_choice", label="Choose a Check Profile", 
+                        placeholder="Select the right Profile for this check",
+                        choices=[ ui.Choice(name=str(f.resolve()), label=f.stem) for f in profiles ]) 
+                        ]
 
     if dcp.package_type == "VF":
-        check_options +=  [ ui.text_l("with OV"),
-                            ui.dropdown("ov_check_choice", choices=[ 
-                                ui.choice(name=str(ov_dcp.id), label=ov_dcp.title) 
-                                for ov_dcp in dcp.movie.ovs() ],
-                            width = "600px") ]
+        ovs = [ ov for ov in dcp.movie.ovs() if ov.location.id == dcp.location.id ]
+        check_options +=  [ ui.dropdown("ov_check_choice", choices=[ 
+                                ui.choice(name=str(ov_dcp.id), label=ov_dcp.title) for ov_dcp in ovs ],
+                                placeholder = "Choose a OV",
+                                tooltip = "OV must be in the same location as VF",
+                                label = "Original Version DCP",
+                                width = "600px") ]
     
     last_check = []
     if len(jobs) > 0:

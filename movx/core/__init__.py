@@ -44,26 +44,7 @@ DEFAULT_CHECK_PROFILE = {
     "bypass": ["check_assets_pkl_hash"],
 }
 
-check_profile_folder = Path.home() / ".movx" / "check_profiles"
 
-default_check_profile = check_profile_folder / "default.json"
-
-def init_check_profile():
-    if not check_profile_folder.exists():
-        check_profile_folder.mkdir()
-
-    if not default_check_profile.exists():
-        with open(default_check_profile, "w") as fp:
-            json.dump(DEFAULT_CHECK_PROFILE, fp)
-
-def get_available_check_profiles():
-    profiles = []
-
-    for f in check_profile_folder.iterdir():
-        if f.is_file():
-            profiles.append(f)
-
-    return profiles
 
 def _flat_gen(d, parent_key=None):
     for k, v in d.items():
