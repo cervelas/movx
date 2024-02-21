@@ -67,15 +67,15 @@ def include_deps():
                 exit(0)
 
     if is_linux():
-        if subprocess.call(["hash", "asdcp-info"]) + subprocess.call(["hash", "asdcp-test"]) > 0:
+        if subprocess.call(["hash", "asdcp-info"], shell=True) + subprocess.call(["hash", "asdcp-test"], shell=True) > 0:
             print("Fatal Error: Please install 'asdcplib' package on this system")
             exit(0)
         
-        if subprocess.call(["hash", "mediainfo"]) > 0:
+        if subprocess.call(["hash", "mediainfo"], shell=True) > 0:
             print("Fatal Error: Please install 'mediainfo' package on this system")
             exit(0)
 
-        if subprocess.call(["hash", "sox"]) > 0:
+        if subprocess.call(["hash", "sox"], shell=True) > 0:
             print("Fatal Error: Please install 'sox' package on this system")
             exit(0)
     
@@ -130,9 +130,13 @@ def start_serve(log_level="warning", reload=False, browse=False):
         print("")
     uvicorn.run(ENTRY_POINT, log_level=log_level, reload=reload)
 
-def start_agent(host="0.0.0.0", port=11011, debug=False):
+def start_agent(host="0.0.0.0", port=11011, debug=False, noblock=False):
     
     config = uvicorn.Config("movx.core.agent:app", host=host, port=port, log_level="warning")
-    server = uvicorn.Server(config=config)
+    if noblock:
+        instance = UvicornServer(config)
+        instance.start()
+    else:
+        server = uvicorn.Server(config=config)
 
-    server.run()
+        server.run()
