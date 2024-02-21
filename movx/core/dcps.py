@@ -41,7 +41,7 @@ def check_all(cb=None):
 
 def parse_all():
     """
-    Probe all the DCP^s in the database
+    Probe all the DCP's in the database
     """
     ids = []
     for dcp in DCP.get():
@@ -64,7 +64,7 @@ def parse_all():
 
 def by_files_parse_report(report):
     files = {
-        am["FileName"]: {"__id": am["Info"]["AssetMap"]["Id"], "__type": "assetmap"}
+        am["FileName"]: {"__id": am["Info"]["AssetMap"]["Id"], "__type": "ASSETMAP"}
         for am in report.get("assetmap_list", [])
     }
     files.update(
@@ -78,31 +78,35 @@ def by_files_parse_report(report):
         f = finditem(report, "Id", v["__id"])
         for e in f:
             files[k].update(e)
-        if "asdcpKind=" in files[k].get("Type", ""):
+        if files[k].get("EssenceType") is not None:
+            files[k]["__type"] = files[k].get("EssenceType")
+        elif "asdcpKind=" in files[k].get("Type", ""):
             files[k]["__type"] = files[k].get("Type").split("asdcpKind=")[1].lower()
         elif files[k].get("PackingList") is True:
-            files[k]["__type"] = "pkl"
+            files[k]["__type"] = "PKL"
+        elif files[k].get("NamingConvention") is not None:
+            files[k]["__type"] = "CPL"
 
     files.update(
         {
-            vi["FileName"]: {"__type": "volindex", **vi["Info"]}
+            vi["FileName"]: {"__type": "VOLINDEX", **vi["Info"]}
             for vi in report.get("volindex_list", [])
         }
     )
 
     return files
 
-def start_poll_agent_job(job, dcp, type, timeout = 20):
+def start_poll_agent_job(job, dcp, type, timeout = 3600, data=None):
     ret = False
     started = time.time()
     uri = "http://%s/job_start" % dcp.location.uri
-    r = httpx.get(uri, params={"type": type, "path": dcp.path})
+    r = httpx.post(uri, params={"type": type, "path": dcp.path}, data=data)
     if r.status_code == 200:
         resp = r.json()
         finished = False
         uri = "http://%s/job_status" % dcp.location.uri
         while not finished:
-            if time.time() - started > 20:
+            if time.time() - started > timeout:
                 raise Exception("Timeout on job status request")
             r = httpx.get(uri, params={"path": dcp.path})
             if r.status_code == 200:
@@ -125,8 +129,8 @@ def parse_job(job, dcp, probe=False, kdm=None, pkey=None):
     report = {}
 
     if dcp.location.type == LocationType.Agent:
-        report = start_poll_agent_job(job, dcp, "parse")
-    else:
+        report = start_poll_agent_job(job, dcp, "parse", data={ "kdm": kdm, "pkey": pkey })
+    elif dcp.location.type == LocationType.Local:
         cm_dcp = clairmeta.DCP(dcp.path, kdm=kdm, pkey=pkey)
         report = cm_dcp.parse(probe=probe)
 
@@ -186,7 +190,7 @@ def probe(dcp, kdm=None, pkey=None):
     return job.id
 
 
-def check_job(job, dcp, ov_dcp_path=None, profile="default.json"):
+def check_job(job, dcp, ov_dcp_path=None, profile="default.json", kdm=None, pkey=None):
     """
     Check a DCP
     """
@@ -199,22 +203,25 @@ def check_job(job, dcp, ov_dcp_path=None, profile="default.json"):
         with open(profile, "r") as fp:
             profile = json.load(fp)
 
-    def check_job_cb(file, current, final, t):
-        job.update(progress=current / final)
+    if dcp.location.type == LocationType.Agent:
+        report = start_poll_agent_job(job, dcp, "check", data={ "ov_dcp_path": ov_dcp_path, "profile": profile, "kdm": kdm, "pkey": pkey })
+    elif dcp.location.type == LocationType.Local:
+        def check_job_cb(file, current, final, t):
+            job.update(progress=current / final)
 
-    cm_dcp = clairmeta.DCP(dcp.path)
-    status, check_report = cm_dcp.check(
-        profile=profile, ov_path=ov_dcp_path, hash_callback=check_job_cb
-    )
+        cm_dcp = clairmeta.DCP(dcp.path, kdm=kdm, pkey=pkey)
+        status, check_report = cm_dcp.check(
+            profile=profile, ov_path=ov_dcp_path, hash_callback=check_job_cb
+        )
 
-    report = check_report_to_dict(check_report)
+        report = check_report_to_dict(check_report)
 
     job.finished.set()
 
     return report
 
 
-def check(dcp, ov=None, profile=None, cb=None):
+def check(dcp, ov=None, profile="default", cb=None):
     """
     Create a Check job for a DCP
     """
@@ -226,9 +233,11 @@ def check(dcp, ov=None, profile=None, cb=None):
 
     ov_path = ov.path if ov else None
 
-    profile = check_profile_folder / "%s.json" % profile
+    profile = check_profile_folder / ("%s.json" % profile)
+    with open(profile, "r") as fp:
+        profile = json.load(fp)
 
-    jt = jobs.JobTask(job, check_job, dcp=dcp, ov_dcp_path=ov_path, profile=str(profile.resolve()))
+    jt = jobs.JobTask(job, check_job, dcp=dcp, ov_dcp_path=ov_path, profile=profile)
     jt.start()
 
     return job.id

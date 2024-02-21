@@ -122,6 +122,7 @@ nav = ui.nav_card(
                 ui.nav_item(name="#overview", label="📽 Overview"),
                 ui.nav_item(name="#dcps", label="⛁ DCPs"),
                 ui.nav_item(name="#movs", label="🎞 Movies"),
+                ui.nav_item(name="#locs", label="⛁ Locations"),
                 ui.nav_item(name="#jobs", label="𝌠 Jobs"),
                 ui.nav_item(name="#settings", label="⚙ Settings"),
             ],
@@ -220,7 +221,7 @@ def full_table(dic: dict, searchable=True, height="500px"):
     rows = []
     exclude = (MutableSequence, MutableMapping)
     for k, v in dic.items():
-        if not isinstance(v, exclude):
+        if not isinstance(v, exclude) and not str(k).startswith("__"):
             rows.append(ui.table_row(name=f"row.{k}", cells=[str(k), str(v)]))
     return ui.table(
         name="table",

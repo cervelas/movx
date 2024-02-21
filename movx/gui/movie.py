@@ -4,8 +4,7 @@ from h2o_wave import Q, ui, on
 from movx.core.db import Movie, Tags
 from movx.gui import setup_page, debug_card
 
-
-from movx.gui.cards.movie import add_movie_cards, dcps_table
+from movx.gui.cards.movies import add_movie_cards, dcps_table
 
 
 @on()

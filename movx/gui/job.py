@@ -35,13 +35,13 @@ async def task_detail_layout(q: Q, id: int):
             box=ui.box("content", size=0),
             items=[
                 ui.inline(
-                    justify="start",
+                    justify="between",
                     items=[
-                        ui.button(name="#jobs", label="Back", icon="ChevronLeftMed"),
                         ui.text_xl(
-                            'Task %s <a href="#dcp/%s">%s</a> %s'
-                            % (job.type, job.dcp.id, job.dcp.title, job.status)
+                            "%s %s [%s](#dcp/%s) @ [%s](#loc/%s)"
+                            % (job.type.name, job.status.name, job.dcp.title, job.dcp.id, job.dcp.location.name, job.dcp.location.id )
                         ),
+                        ui.button(name="goto_movie", label="%s >" % job.dcp.movie.title, value=str(job.dcp.movie.id)),
                         # ui.button(
                         #    name="#dcp/%s" % job.dcp.id,
                         #    label="%s" % job.dcp.title,

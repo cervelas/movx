@@ -9,12 +9,14 @@ import socket
 import clairmeta
 
 from starlette.applications import Starlette
-from starlette.responses import PlainTextResponse, JSONResponse
-from starlette.routing import Route, Mount, WebSocketRoute
-from starlette.background import BackgroundTask
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 
 from movx.core import is_linux, is_win, DEFAULT_CHECK_PROFILE, check_report_to_dict, version
 from movx.gui import get_linux_drives, get_windows_drives
+
+clairmeta.logger.set_level(logging.WARNING)
+
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -63,7 +65,8 @@ def parse(path, probe=False, kdm=None, pkey=None):
 
     print("parse finished on %s" % path)
 
-def check(path, ov_dcp_path=None, profile=None):
+
+def check(path, ov_dcp_path=None, profile=None, kdm=None, pkey=None):
     """
     Check a DCP
     """
@@ -74,16 +77,14 @@ def check(path, ov_dcp_path=None, profile=None):
     current_jobs.update({ path: {"status": "created", "progress": 0} })
 
     profile = profile or DEFAULT_CHECK_PROFILE
-
     
     def check_job_cb(file, current, final, t):
         global current_jobs
         nonlocal path
-        print(current / final)
         current_jobs[path].update({ "progress": current / final })
 
     try:
-        cm_dcp = clairmeta.DCP(path)
+        cm_dcp = clairmeta.DCP(path, kdm=kdm, pkey=pkey)
         status, check_report = cm_dcp.check(
             profile=profile, ov_path=ov_dcp_path, hash_callback=check_job_cb
         )
@@ -93,7 +94,6 @@ def check(path, ov_dcp_path=None, profile=None):
         current_jobs[path].update({ "status": "done", "result": result, "progress": 1 })
 
     except Exception as e:
-
         print(e)
         print(traceback.format_exc())
         current_jobs[path].update({ "status": "error", "Error": traceback.format_exc() })
@@ -146,7 +146,7 @@ async def job_start(request):
         elif type == "probe":
             t = threading.Thread(target=parse, args=(path, True, json.get("kdm_path"), json.get("dkdm_path"))).start()
         elif type == "check":
-            t = threading.Thread(target=check, args=(path, json.get("ov_dcp_path"), json.get("profile"))).start()
+            t = threading.Thread(target=check, args=(path, json.get("ov_dcp_path"), json.get("profile"), json.get("kdm_path"), json.get("dkdm_path"))).start()
         else:
             return JSONResponse({"Error": "type %s not found" % type})
     else:
@@ -176,7 +176,7 @@ routes = [
     Route('/', index),
     Route('/browse', browse),
     Route('/scan', scan),
-    Route('/job_start', job_start),
+    Route('/job_start', job_start, methods=["POST", "GET"]),
     Route('/job_status', job_status),
     Route('/exit', lambda: exit(0))
     #Mount('/static', StaticFiles(directory="static")),

@@ -198,8 +198,8 @@ class Location(Base):
 
     __tablename__ = "location"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
-    path: Mapped[str] = mapped_column(unique=True)
     name: Mapped[str] = mapped_column(unique=True)
+    path: Mapped[str] = mapped_column()
     last_scan: Mapped[float] = mapped_column(
         insert_default=time.time(), default=time.time()
     )
@@ -328,6 +328,7 @@ class DCP(Base):
     kind: Mapped[Optional[str]] = mapped_column(default="")
     size: Mapped[Optional[int]] = mapped_column(default=0)
     notes: Mapped[Optional[str]] = mapped_column(default="")
+    status: Mapped[Optional[str]] = mapped_column(default="")
 
     def __post_init__(self):
         self.uid = uuid.uuid5(uuid.NAMESPACE_X500, str(self.path))

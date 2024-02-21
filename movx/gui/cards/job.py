@@ -20,9 +20,11 @@ def job_cards(q, job):
 
 
 def job_progress(job):
-    st = datetime.fromtimestamp(job.started_at)
+    items = []
+    if job.started_at > 0:
+        st = datetime.fromtimestamp(job.started_at)
 
-    items = [ui.text_s("Started @ %s" % st.strftime("%m/%d/%Y %H:%M:%S"))]
+        items = [ui.text_s("Started @ %s" % st.strftime("%m/%d/%Y %H:%M:%S"))]
 
     if job.finished_at > 0:
         ft = datetime.fromtimestamp(job.finished_at)
@@ -526,35 +528,53 @@ def checks_full_table(checks):
         tooltip="Result",
     )
 
+def check_report_items(report):
+    
+    if report.get("valid") is None:
+        return [ ui.text("Report not valid") ]
+
+    summary = []
+    
+    if report.get("errors"):
+        summary += [    ui.text_xl("Errors"),
+                        checks_md_table(report.get("errors", [])) ]
+    
+    if report.get("warnings"):
+        summary += [    ui.text_xl("Warnings"),
+                        checks_md_table(report.get("warnings", [])) ]
+    
+    if report.get("bypass"):
+        summary += [    ui.text_xl("Ignored"),
+                        checks_md_table(report.get("bypass", [])) ]
+
+    return [
+        ui.inline(
+            justify="between",
+            items=[
+                ui.text("%s tests executed" % (report.get("unique_checks_count", 0))),
+                ui.text_xl("Check %s" % ("Passed" if report.get("valid") else "failed")),
+                ui.text("%d seconds" % (report.get("duration_seconds", 0))),
+            ],
+        ),
+        ui.expander(
+            name="expander",
+            label="Check Summary",
+            items=[
+                ui.markup(
+                    name="markup",
+                    content="Message Summary<br><pre>%s</pre>" % report.get("message"),
+                ),
+            ] + summary,
+        ),
+    ]
 
 def add_check_cards(q, report):
     q.page.add(
         "check_result_card",
         ui.form_card(
             box=ui.box("content", size=0),
-            items=[
-                ui.inline(
-                    justify="between",
-                    items=[
-                        ui.text_xl(" %s " % ("PASS" if report.get("valid") else "FAIL"))
-                    ],
-                ),
-                ui.expander(
-                    name="expander",
-                    label="Check Summary",
-                    items=[
-                        ui.markup(
-                            name="markup",
-                            content="<pre>%s</pre>" % report.get("message"),
-                        ),
-                        ui.text_xl("Errors"),
-                        checks_md_table(report.get("errors", [])),
-                        ui.text_xl("Warnings"),
-                        checks_md_table(report.get("warnings", [])),
-                        ui.text_xl("Bypassed"),
-                        checks_md_table(report.get("bypass", [])),
-                    ],
-                ),
+            items=check_report_items(report) + 
+            [
                 ui.expander(
                     name="expander",
                     label="Full Checks Reference",

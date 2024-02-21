@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# $FreeBSD$
+#
+# PROVIDE: movx 
+# REQUIRE: NETWORK
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="movx"
+rcvar="movx_enable"
+
+# default values
+: ${movx_enable="NO"}
+
+root_path="/mnt/SHARE"
+
+command=/usr/sbin/daemon
+
+pidfile="/var/run/${name}.pid"
+# -p : daemon handler pidfile
+# -f : redirect stdout and stderr to /dev/null
+# -c : change working dir to root
+command_args="-t movx -f -T movx -P /var/run/movx.pid /usr/local/bin/python3.9 -m movx agent ${root_path}"
+#procname="movx"
+#command_interpreter="/usr/local/bin/python3.9"
+
+
+load_rc_config $name
+run_rc_command "$1"
+

@@ -65,7 +65,7 @@ class JobTask(threading.Thread):
                         j.update(
                             status=db.JobStatus.finished,
                             progress=1,
-                            result=result or {"no result"},
+                            result=result or {},
                             finished_at=time.time(),
                         )
                     break
