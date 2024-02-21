@@ -244,7 +244,7 @@ def check_job(job, dcp, ov_dcp_path=None, profile=None, kdm=None, pkey=None):
 
         report = check_report_to_dict(check_report)
     
-    report["movx_check_profile"] = profile.stem
+    report["movx_check_profile"] = str(profile)
     report["movx_check_ov"] = str(ov_dcp_path)
     report["movx_check_kdm"] = str(kdm)
     report["movx_check_pkey"] = str(pkey)
