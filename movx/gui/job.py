@@ -45,7 +45,7 @@ async def task_detail_layout(q: Q, id: int):
                     ] 
 
             if job.dcp.movie is not None:
-                header = +[ ui.inline([
+                header += [ ui.inline([
                                     ui.button(name="goto_movie", label="%s >" % job.dcp.movie.title, value=str(job.dcp.movie.id)),
                                 ])
                             ]
