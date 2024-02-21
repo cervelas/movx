@@ -30,7 +30,16 @@ async def task_detail_layout(q: Q, id: int):
     job = Job.get(id)
 
     if job:
+
+        movie_btn = []
+        if job.dcp.movie is not None:
+            movie_btn = [ ui.inline([
+                                ui.button(name="goto_movie", label="%s >" % job.dcp.movie.title, value=str(job.dcp.movie.id)),
+                            ])
+                        ]
+        
         setup_page(q, "Job Detail %s" % job.dcp.title)
+        
         q.page["job_detail_%s" % job.id] = ui.form_card(
             box=ui.box("content", size=0),
             items=[
@@ -41,13 +50,7 @@ async def task_detail_layout(q: Q, id: int):
                             "%s %s [%s](#dcp/%s) @ [%s](#loc/%s)"
                             % (job.type.name, job.status.name, job.dcp.title, job.dcp.id, job.dcp.location.name, job.dcp.location.id )
                         ),
-                        ui.button(name="goto_movie", label="%s >" % job.dcp.movie.title, value=str(job.dcp.movie.id)),
-                        # ui.button(
-                        #    name="#dcp/%s" % job.dcp.id,
-                        #    label="%s" % job.dcp.title,
-                        #    icon="VideoSearch",
-                        # ),
-                    ],
+                    ] + movie_btn,
                 ),
             ],
         )

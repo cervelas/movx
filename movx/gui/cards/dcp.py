@@ -25,6 +25,14 @@ def add_infos_cards(q, dcp):
     # add_dcp_actions_card(q, dcp)
 
 def add_dcp_header_card(q, dcp):
+
+    movie_btn = []
+    if dcp.movie is not None:
+        movie_btn = [ ui.inline([
+                            ui.button(name="goto_movie", label=f"{dcp.movie.title} >", value=str(dcp.movie.id)),
+                        ])
+                    ]
+
     q.page.add(
         "dcp_header",
         ui.form_card(
@@ -34,10 +42,7 @@ def add_dcp_header_card(q, dcp):
                     justify="between",
                     items=[
                         ui.text_xl(f"{dcp.title} @ [{dcp.location.name}](#loc/{dcp.location.id})"),
-                        ui.inline([
-                            ui.button(name="goto_movie", label=f"{dcp.movie.title} >", value=str(dcp.movie.id)),
-                        ])
-                    ],
+                    ] + movie_btn,
                 ),
             ],
         ),
