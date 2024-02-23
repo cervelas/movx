@@ -52,14 +52,10 @@ async def add_location(q: Q):
         )
 
         loc.add()
-        notif(q, "Scan for dcps in %s ..." % loc.name)
-        await q.page.save()
-        _dcps = scan4dcps(loc)
-        for dcp in _dcps:
-            dcps.parse(dcp)
+        notif(q, "%s Location Added, please scan it." % loc.name)
+
         q.client.adding_location = False
 
-        notif(q, "%s dcps found in location %s" % (len(_dcps), loc.name))
         await locations(q)
     except Exception as e:
         print(e)
