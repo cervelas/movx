@@ -504,24 +504,23 @@ def checks_full_table(checks):
     rows = []
 
     for check in checks:
-        print(check)
-        result = "bypass" if check["bypass"] else "pass"
+        result = "bypass" if check.get("bypass") else "pass"
         message = ""
-        if len(check.get("errors")) > 0:
-            result = ",".join(err["criticality"].lower() for err in check["errors"])
-            message = "\r\n<br>\r\n".join(err["message"] for err in check["errors"])
+        if len(check.get("errors", [])) > 0:
+            result = ",".join(err.get("criticality", "").lower() for err in check.get("errors", []))
+            message = "\r\n<br>\r\n".join(err.get("message", "") for err in check.get("errors", []))
 
         rows.append(
             ui.table_row(
-                name=check["name"],
+                name=check.get("name", ""),
                 cells=[
-                    check["pretty_name"],
+                    check.get("pretty_name", "unknown"),
                     result,
                     message,
-                    " > ".join(check["asset_stack"]),
-                    check["doc"],
-                    str(round(check["seconds_elapsed"])),
-                    check["name"],
+                    " > ".join(check.get("asset_stack", [])),
+                    check.get("doc", ""),
+                    str(round(check.get("seconds_elapsed", 0))),
+                    check.get("name", ""),
                 ],
             )
         )
