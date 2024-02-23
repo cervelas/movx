@@ -427,7 +427,7 @@ engine = create_engine(db_url, max_overflow=30)
 #Session = sessionmaker(bind=engine, expire_on_commit=False)
 Session = scoped_session(
     sessionmaker(
-        autoflush=True,
+        autoflush=False,
         autocommit=False,
         expire_on_commit=False,
         bind=engine
