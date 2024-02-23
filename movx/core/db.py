@@ -44,7 +44,7 @@ Session = None
 
 make_versioned(user_cls=None)
 
-global_db_lock = threading.Lock()
+global_db_write_lock = threading.Lock()
 
 def del_db_file():
     shutil.copyfile(str(db_path), str(db_path.parent / "backup.backupdb"))
@@ -64,31 +64,28 @@ class Base(MappedAsDataclass, DeclarativeBase):
         """
         Add this object to the DB
         """
-        with global_db_lock:
-            with Session() as session:
-                session.add(self)
-                session.commit()
+        with global_db_write_lock:
+            Session.add(self)
+            Session.commit()
         return self
 
     def delete(self):
         """
         Delete this object from the DB
         """
-        with global_db_lock:
-            with Session() as session:
-                session.execute(delete(self.__class__).where(self.__class__.id == self.id))
-                session.commit()
+        with global_db_write_lock:
+            Session.execute(delete(self.__class__).where(self.__class__.id == self.id))
+            Session.commit()
 
     def update(self, **args):
         """
         update this object values according to the paremeters passed to this function
         """
-        with global_db_lock:
-            with Session() as session:
-                session.execute(
-                    self.__table__.update().where(self.__class__.id == self.id).values(args)
-                )
-                session.commit()
+        with global_db_write_lock:
+            Session.execute(
+                self.__table__.update().where(self.__class__.id == self.id).values(args)
+            )
+            Session.commit()
             return self
 
     @classmethod
@@ -102,16 +99,14 @@ class Base(MappedAsDataclass, DeclarativeBase):
         OR get a particular object if the id parameter is provided
         """
         ret = None
-        with global_db_lock:
-            with Session() as session:
-                if inspect.isclass(self):
-                    if id:
-                        ret = session.get(self, id)
-                    else:
-                        ret = session.scalars(select(self)).all()
-                else:
-                    ret = session.get(self.__class__, self.id)
-            return ret
+        if inspect.isclass(self):
+            if id:
+                ret = Session.get(self, id)
+            else:
+                ret = Session.scalars(select(self)).all()
+        else:
+            ret = Session.get(self.__class__, self.id)
+        return ret
 
     @classmethod
     def get_all(cls):
@@ -119,22 +114,19 @@ class Base(MappedAsDataclass, DeclarativeBase):
         get all objects of this same class from the DB
         """
         ret = []
-        with global_db_lock:
-            with Session() as session:
-                ret = session.scalars(
-                    select(cls), execution_options={"prebuffer_rows": True}
-                ).all()
-            return ret
+        ret = Session.scalars(
+            select(cls), execution_options={"prebuffer_rows": True}
+        ).all()
+        return ret
 
     @classmethod
     def clear(cls):
         """
         Clear this object table (delete all the rows)
         """
-        with global_db_lock:
-            with Session() as session:
-                session.query(cls).delete()
-                session.commit()
+        with global_db_write_lock:
+            Session.query(cls).delete()
+            Session.commit()
 
     @classmethod
     def filter(cls, expr):
@@ -142,22 +134,19 @@ class Base(MappedAsDataclass, DeclarativeBase):
         Filter query on this object class
         """
         ret = []
-        with global_db_lock:
-            with Session() as session:
-                ret = session.scalars(
-                    select(cls).filter(expr), execution_options={"prebuffer_rows": True}
-                )
-            return ret
+        ret = Session.scalars(
+            select(cls).filter(expr), execution_options={"prebuffer_rows": True}
+        )
+        return ret
 
     @contextmanager
     def fresh(self):
         """
         Context manager that get a fresh version of this very object, yield, and commit it.
         """
-        with Session() as session:
-            t = session.query(self.__class__).get(self.id)
-            yield t
-            session.commit()
+        t = Session.query(self.__class__).get(self.id)
+        yield t
+        Session.commit()
 
 
 class User(Base):
@@ -275,12 +264,10 @@ class Movie(Base):
         """
         Get all the movie's dcp
         """
-        with global_db_lock:
-            with Session() as session:
-                return session.scalars(
-                    select(DCP).where(DCP.movie == self),
-                    execution_options={"prebuffer_rows": True},
-                ).all()
+        return Session.scalars(
+            select(DCP).where(DCP.movie == self),
+            execution_options={"prebuffer_rows": True},
+        ).all()
 
     def ovs(self):
         """
@@ -348,22 +335,21 @@ class DCP(Base):
         self.uid = uuid.uuid5(uuid.NAMESPACE_X500, str(self.path))
 
     def jobs(self, type=None):
-        with Session() as session:
-            if type:
-                return session.scalars(
-                    select(Job)
-                    .where(
-                        Job.dcp == self,
-                        Job.type == type,
-                    )
-                    .order_by(Job.finished_at.desc()),
-                    execution_options={"prebuffer_rows": True},
-                ).all()
-            else:
-                return session.scalars(
-                    select(Job).where(Job.dcp == self).order_by(Job.finished_at.desc()),
-                    execution_options={"prebuffer_rows": True},
-                ).all()
+        if type:
+            return Session.scalars(
+                select(Job)
+                .where(
+                    Job.dcp == self,
+                    Job.type == type,
+                )
+                .order_by(Job.finished_at.desc()),
+                execution_options={"prebuffer_rows": True},
+            ).all()
+        else:
+            return Session.scalars(
+                select(Job).where(Job.dcp == self).order_by(Job.finished_at.desc()),
+                execution_options={"prebuffer_rows": True},
+            ).all()
 
 
 class JobStatus(enum.Enum):
@@ -437,7 +423,7 @@ print("Configuring Database...", end="")
 
 configure_mappers()
 
-engine = create_engine(db_url)
+engine = create_engine(db_url, max_overflow=30)
 #Session = sessionmaker(bind=engine, expire_on_commit=False)
 Session = scoped_session(
     sessionmaker(

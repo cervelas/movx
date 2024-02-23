@@ -185,8 +185,6 @@ def parse(dcp):
 
     job.add()
 
-    make_transient(dcp)
-
     ttask = jobs.JobTask(job, parse_job, dcp=dcp, probe=False)
 
     ttask.start()
@@ -202,8 +200,6 @@ def probe(dcp, kdm=None, pkey=None):
     job = Job(type=JobType.probe, dcp=dcp, author=User.get(1))
 
     job.add()
-
-    make_transient(dcp)
 
     ttask = jobs.JobTask(job, parse_job, dcp=dcp, kdm=kdm, pkey=pkey, probe=True)
 
@@ -268,8 +264,6 @@ def check(dcp, ov=None, profile=None, cb=None):
     job = Job(type=JobType.check, dcp=dcp, author=User.get(1))
 
     job.add()
-
-    make_transient(dcp)
 
     init_check_profile()
 

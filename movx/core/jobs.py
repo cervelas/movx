@@ -54,8 +54,6 @@ class JobTask(threading.Thread):
                     started_at=time.time(),
                 )
 
-            make_transient(self.job)
-
             result = self.func(self.job, **self.args)
             # JobTask.start_poll()
 
