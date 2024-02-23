@@ -61,25 +61,28 @@ class Base(MappedAsDataclass, DeclarativeBase):
         """
         Add this object to the DB
         """
-        Session.add(self)
-        Session.commit()
+        with Session() as session:
+            session.add(self)
+            session.commit()
         return self
 
     def delete(self):
         """
         Delete this object from the DB
         """
-        Session.execute(delete(self.__class__).where(self.__class__.id == self.id))
-        Session.commit()
+        with Session() as session:
+            session.execute(delete(self.__class__).where(self.__class__.id == self.id))
+            session.commit()
 
     def update(self, **args):
         """
         update this object values according to the paremeters passed to this function
         """
-        Session.execute(
-            self.__table__.update().where(self.__class__.id == self.id).values(args)
-        )
-        Session.commit()
+        with Session() as session:
+            session.execute(
+                self.__table__.update().where(self.__class__.id == self.id).values(args)
+            )
+            session.commit()
         return self
 
     @classmethod
@@ -93,13 +96,14 @@ class Base(MappedAsDataclass, DeclarativeBase):
         OR get a particular object if the id parameter is provided
         """
         ret = None
-        if inspect.isclass(self):
-            if id:
-                ret = Session.get(self, id)
+        with Session() as session:
+            if inspect.isclass(self):
+                if id:
+                    ret = session.get(self, id)
+                else:
+                    ret = session.scalars(select(self)).all()
             else:
-                ret = Session.scalars(select(self)).all()
-        else:
-            ret = Session.get(self.__class__, self.id)
+                ret = session.get(self.__class__, self.id)
         return ret
 
     @classmethod
@@ -108,9 +112,10 @@ class Base(MappedAsDataclass, DeclarativeBase):
         get all objects of this same class from the DB
         """
         ret = []
-        ret = Session.scalars(
-            select(cls), execution_options={"prebuffer_rows": True}
-        ).all()
+        with Session() as session:
+            ret = session.scalars(
+                select(cls), execution_options={"prebuffer_rows": True}
+            ).all()
         return ret
 
     @classmethod
@@ -118,8 +123,9 @@ class Base(MappedAsDataclass, DeclarativeBase):
         """
         Clear this object table (delete all the rows)
         """
-        Session.query(cls).delete()
-        Session.commit()
+        with Session() as session:
+            session.query(cls).delete()
+            session.commit()
 
     @classmethod
     def filter(cls, expr):
@@ -127,9 +133,10 @@ class Base(MappedAsDataclass, DeclarativeBase):
         Filter query on this object class
         """
         ret = []
-        ret = Session.scalars(
-            select(cls).filter(expr), execution_options={"prebuffer_rows": True}
-        )
+        with Session() as session:
+            ret = session.scalars(
+                select(cls).filter(expr), execution_options={"prebuffer_rows": True}
+            )
         return ret
 
     @contextmanager
@@ -137,9 +144,10 @@ class Base(MappedAsDataclass, DeclarativeBase):
         """
         Context manager that get a fresh version of this very object, yield, and commit it.
         """
-        t = Session.query(self.__class__).get(self.id)
-        yield t
-        Session.commit()
+        with Session() as session:
+            t = session.query(self.__class__).get(self.id)
+            yield t
+            session.commit()
 
 
 class User(Base):
