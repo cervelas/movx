@@ -10,7 +10,7 @@ def all_movies_table(movies):
             name="Title",
             label="Title",
             searchable=True,
-            filterable=True,
+            sortable=True,
             min_width="500px",
             link=True,
         ),

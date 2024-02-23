@@ -19,7 +19,7 @@ def jobs_list_table(jobs):
             name="status", label="status", filterable=True, max_width="150px"
         ),
         ui.table_column(
-            name="started", label="started", max_width="200px", data_type="time"
+            name="started", label="started", max_width="200px", data_type="time", sortable=True
         ),
         ui.table_column(
             name="progress",

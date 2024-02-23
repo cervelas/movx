@@ -15,25 +15,29 @@ def dcps_table(dcps):
             label="Title",
             searchable=True,
             filterable=True,
+            sortable=True,
             min_width="500px",
-            cell_type=ui.markdown_table_cell_type(target=""),
+            link=True,
+            #cell_type=ui.markdown_table_cell_type(target=""),
         ),
         ui.table_column(
             name="Movie",
             label="Movie",
             searchable=True,
+            filterable=True,
             min_width="250px",
-            cell_type=ui.markdown_table_cell_type(target=""),
+            #cell_type=ui.markdown_table_cell_type(target=""),
         ),
         ui.table_column(
             name="Location",
             label="Location",
             searchable=True,
+            filterable=True,
             max_width="80px",
-            cell_type=ui.markdown_table_cell_type(target=""),
+            #cell_type=ui.markdown_table_cell_type(target=""),
         ),
         ui.table_column(name="Type", label="Type", filterable=True, max_width="70px"),
-        ui.table_column(name="Size", label="Size", max_width="80px"),
+        ui.table_column(name="Size", label="Size", max_width="80px", sortable=True),
         ui.table_column(
             name="Tags",
             label="tags",
@@ -65,7 +69,7 @@ def dcps_table(dcps):
         name="all_dcp_list",
         columns=columns,
         rows=gen_dcps_rows(dcps),
-        groupable=False,
+        groupable=True,
         downloadable=True,
         resettable=True,
         height="calc(100vh - 90px)",
@@ -78,14 +82,18 @@ def gen_dcps_rows(dcps):
     for dcp in dcps:
         loc_lnk = "Unknown"
         mov_lnk = "Unknown"
+
         if dcp.movie is not None:
-            mov_lnk = "[%s](#mov/%s)" % (dcp.movie.title, dcp.movie.id)
+            #mov_lnk = "[%s](#mov/%s)" % (dcp.movie.title, dcp.movie.id)
+            mov_lnk = dcp.movie.title
         if dcp.location is not None:
-            loc_lnk = "[%s](#loc/%s)" % (dcp.location.name, dcp.location.id)
+            #loc_lnk = "[%s](#loc/%s)" % (dcp.location.name, dcp.location.id)
+            loc_lnk = dcp.location.name
 
         cells = [
             # "",
-            "[%s](#dcp/%s)" % (dcp.title, dcp.id),
+            #"[%s](#dcp/%s)" % (dcp.title, dcp.id),
+            dcp.title,
             mov_lnk,
             loc_lnk,
             str(dcp.package_type),

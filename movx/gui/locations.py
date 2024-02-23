@@ -57,7 +57,6 @@ async def add_location(q: Q):
         _dcps = scan4dcps(loc)
         for dcp in _dcps:
             dcps.parse(dcp)
-            time.sleep(0.5)
         q.client.adding_location = False
 
         notif(q, "%s dcps found in location %s" % (len(_dcps), loc.name))

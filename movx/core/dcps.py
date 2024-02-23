@@ -83,9 +83,6 @@ def parse_all():
             print(task.status)
             # print(task.result)
 
-        for dcp in session.scalars(select(DCP)).all():
-            print(dcp.size)
-
 
 def by_files_parse_report(report):
     files = {
@@ -126,7 +123,8 @@ def start_poll_agent_job(job, dcp, type, timeout=3600, data=None):
     ret = False
     started = time.time()
     uri = "http://%s/job_start" % dcp.location.uri
-    r = httpx.post(uri, params={"type": type, "path": dcp.path}, data=data)
+    print(data)
+    r = httpx.post(uri, params={"type": type, "path": dcp.path}, json=data)
     if r.status_code == 200:
         resp = r.json()
         finished = False
@@ -297,7 +295,7 @@ def update_movie(dcp, movie_title):
 
 def update_dcp_infos(dcp, report):
     dcp = dcp.update(
-        package_type=report.get("package_type", "??"), size=report.get("size", -1)
+        package_type=report.get("package_type", "??"), size=report.get("size_bytes", -1)
     )
 
     cpl = False
