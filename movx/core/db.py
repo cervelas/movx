@@ -5,6 +5,8 @@ import inspect
 import os
 import shutil
 import enum
+import threading
+
 from typing import Set, List, Optional
 from pathlib import Path
 from contextlib import contextmanager
@@ -42,6 +44,7 @@ Session = None
 
 make_versioned(user_cls=None)
 
+global_db_lock = threading.Lock()
 
 def del_db_file():
     shutil.copyfile(str(db_path), str(db_path.parent / "backup.backupdb"))
@@ -61,29 +64,32 @@ class Base(MappedAsDataclass, DeclarativeBase):
         """
         Add this object to the DB
         """
-        with Session() as session:
-            session.add(self)
-            session.commit()
+        with global_db_lock:
+            with Session() as session:
+                session.add(self)
+                session.commit()
         return self
 
     def delete(self):
         """
         Delete this object from the DB
         """
-        with Session() as session:
-            session.execute(delete(self.__class__).where(self.__class__.id == self.id))
-            session.commit()
+        with global_db_lock:
+            with Session() as session:
+                session.execute(delete(self.__class__).where(self.__class__.id == self.id))
+                session.commit()
 
     def update(self, **args):
         """
         update this object values according to the paremeters passed to this function
         """
-        with Session() as session:
-            session.execute(
-                self.__table__.update().where(self.__class__.id == self.id).values(args)
-            )
-            session.commit()
-        return self
+        with global_db_lock:
+            with Session() as session:
+                session.execute(
+                    self.__table__.update().where(self.__class__.id == self.id).values(args)
+                )
+                session.commit()
+            return self
 
     @classmethod
     def get(self=None, id=None):
@@ -96,15 +102,16 @@ class Base(MappedAsDataclass, DeclarativeBase):
         OR get a particular object if the id parameter is provided
         """
         ret = None
-        with Session() as session:
-            if inspect.isclass(self):
-                if id:
-                    ret = session.get(self, id)
+        with global_db_lock:
+            with Session() as session:
+                if inspect.isclass(self):
+                    if id:
+                        ret = session.get(self, id)
+                    else:
+                        ret = session.scalars(select(self)).all()
                 else:
-                    ret = session.scalars(select(self)).all()
-            else:
-                ret = session.get(self.__class__, self.id)
-        return ret
+                    ret = session.get(self.__class__, self.id)
+            return ret
 
     @classmethod
     def get_all(cls):
@@ -112,20 +119,22 @@ class Base(MappedAsDataclass, DeclarativeBase):
         get all objects of this same class from the DB
         """
         ret = []
-        with Session() as session:
-            ret = session.scalars(
-                select(cls), execution_options={"prebuffer_rows": True}
-            ).all()
-        return ret
+        with global_db_lock:
+            with Session() as session:
+                ret = session.scalars(
+                    select(cls), execution_options={"prebuffer_rows": True}
+                ).all()
+            return ret
 
     @classmethod
     def clear(cls):
         """
         Clear this object table (delete all the rows)
         """
-        with Session() as session:
-            session.query(cls).delete()
-            session.commit()
+        with global_db_lock:
+            with Session() as session:
+                session.query(cls).delete()
+                session.commit()
 
     @classmethod
     def filter(cls, expr):
@@ -133,11 +142,12 @@ class Base(MappedAsDataclass, DeclarativeBase):
         Filter query on this object class
         """
         ret = []
-        with Session() as session:
-            ret = session.scalars(
-                select(cls).filter(expr), execution_options={"prebuffer_rows": True}
-            )
-        return ret
+        with global_db_lock:
+            with Session() as session:
+                ret = session.scalars(
+                    select(cls).filter(expr), execution_options={"prebuffer_rows": True}
+                )
+            return ret
 
     @contextmanager
     def fresh(self):
@@ -265,11 +275,12 @@ class Movie(Base):
         """
         Get all the movie's dcp
         """
-        with Session() as session:
-            return session.scalars(
-                select(DCP).where(DCP.movie == self),
-                execution_options={"prebuffer_rows": True},
-            ).all()
+        with global_db_lock:
+            with Session() as session:
+                return session.scalars(
+                    select(DCP).where(DCP.movie == self),
+                    execution_options={"prebuffer_rows": True},
+                ).all()
 
     def ovs(self):
         """
