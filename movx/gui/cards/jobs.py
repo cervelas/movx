@@ -24,7 +24,7 @@ def jobs_list_table(jobs):
         ui.table_column(
             name="progress",
             label="progress",
-            #cell_type=ui.progress_table_cell_type(),
+            # cell_type=ui.progress_table_cell_type(),
             max_width="70px",
         ),
     ]
@@ -54,7 +54,9 @@ def gen_jobs_rows(jobs):
                     job.type.name,
                     job.status.name,
                     started_at,
-                    str(int(job.progress * 100)) + "%" if job.progress < 1 else "completed",
+                    str(int(job.progress * 100)) + "%"
+                    if job.progress < 1
+                    else "completed",
                 ],
             )
         )

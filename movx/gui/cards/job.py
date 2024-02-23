@@ -46,21 +46,26 @@ def job_progress(job):
         ),
     ]
 
+
 def add_human_check_cards():
-    general_notes_cards()
-    conformity_check_card()
-    check_actions_cards()
+    #general_notes_cards()
+    #conformity_check_card()
+    #check_actions_cards()
+    pass
+
 
 def add_parse_cards(q, parse_report):
     add_am_cards(q, parse_report)
     add_pkl_cards(q, parse_report)
     add_cpl_cards(q, parse_report)
 
+
 def add_probe_cards(q, parse_report):
     add_reels_probe_cards(q, parse_report)
     add_am_cards(q, parse_report)
     add_pkl_cards(q, parse_report)
     add_cpl_cards(q, parse_report)
+
 
 def add_raw_result_card(q, result):
     q.page.add(
@@ -528,31 +533,30 @@ def checks_full_table(checks):
         tooltip="Result",
     )
 
+
 def check_report_items(report):
-    
     if report.get("valid") is None:
-        return [ ui.text("Report not valid") ]
+        return [ui.text("Report not valid")]
 
     summary = []
-    
+
     if report.get("errors"):
-        summary += [    ui.text_xl("Errors"),
-                        checks_md_table(report.get("errors", [])) ]
-    
+        summary += [ui.text_xl("Errors"), checks_md_table(report.get("errors", []))]
+
     if report.get("warnings"):
-        summary += [    ui.text_xl("Warnings"),
-                        checks_md_table(report.get("warnings", [])) ]
-    
+        summary += [ui.text_xl("Warnings"), checks_md_table(report.get("warnings", []))]
+
     if report.get("bypass"):
-        summary += [    ui.text_xl("Ignored"),
-                        checks_md_table(report.get("bypass", [])) ]
+        summary += [ui.text_xl("Ignored"), checks_md_table(report.get("bypass", []))]
 
     return [
         ui.inline(
             justify="between",
             items=[
                 ui.text("%s tests executed" % (report.get("unique_checks_count", 0))),
-                ui.text_xl("Check %s" % ("Passed" if report.get("valid") else "failed")),
+                ui.text_xl(
+                    "Check %s" % ("Passed" if report.get("valid") else "failed")
+                ),
                 ui.text("%d seconds" % (report.get("duration_seconds", 0))),
             ],
         ),
@@ -564,17 +568,19 @@ def check_report_items(report):
                     name="markup",
                     content="Message Summary<br><pre>%s</pre>" % report.get("message"),
                 ),
-            ] + summary,
+            ]
+            + summary,
         ),
     ]
+
 
 def add_check_cards(q, report):
     q.page.add(
         "check_result_card",
         ui.form_card(
             box=ui.box("content", size=0),
-            items=check_report_items(report) + 
-            [
+            items=check_report_items(report)
+            + [
                 ui.expander(
                     name="expander",
                     label="Full Checks Reference",

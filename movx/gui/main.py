@@ -134,10 +134,11 @@ async def handle_fallback(q: Q):
 
 @on()
 async def goto_movie(q: Q):
-    q.page['meta'].redirect = '#mov/%s' % q.args.goto_movie
+    q.page["meta"].redirect = "#mov/%s" % q.args.goto_movie
     await q.page.save()
+
 
 @on()
 async def goto_location(q: Q):
-    q.page['meta'].redirect = '#loc/%s' % q.args.goto_location
+    q.page["meta"].redirect = "#loc/%s" % q.args.goto_location
     await q.page.save()

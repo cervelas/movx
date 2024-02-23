@@ -19,12 +19,14 @@ check_profile_folder = dotmovx / "check_profiles"
 
 default_check_profile = check_profile_folder / "default.json"
 
+
 def init_check_profile():
     check_profile_folder.mkdir(exist_ok=True)
 
     if not default_check_profile.exists():
         with open(default_check_profile, "w") as fp:
             json.dump(DEFAULT_CHECK_PROFILE, fp)
+
 
 def get_available_check_profiles():
     init_check_profile()
@@ -119,7 +121,8 @@ def by_files_parse_report(report):
 
     return files
 
-def start_poll_agent_job(job, dcp, type, timeout = 3600, data=None):
+
+def start_poll_agent_job(job, dcp, type, timeout=3600, data=None):
     ret = False
     started = time.time()
     uri = "http://%s/job_start" % dcp.location.uri
@@ -143,8 +146,9 @@ def start_poll_agent_job(job, dcp, type, timeout = 3600, data=None):
             time.sleep(2)
     else:
         raise Exception("Bad response on job start request: %s" % r)
-    
+
     return ret
+
 
 def parse_job(job, dcp, probe=False, kdm=None, pkey=None):
     """
@@ -153,29 +157,20 @@ def parse_job(job, dcp, probe=False, kdm=None, pkey=None):
     report = {}
 
     if dcp.location.type == LocationType.Agent:
-        report = start_poll_agent_job(job, dcp, "parse", data={ "kdm": kdm, "pkey": pkey })
+        report = start_poll_agent_job(
+            job, dcp, "parse", data={"kdm": kdm, "pkey": pkey}
+        )
     elif dcp.location.type == LocationType.Local:
         cm_dcp = clairmeta.DCP(dcp.path, kdm=kdm, pkey=pkey)
         report = cm_dcp.parse(probe=probe)
 
-    dcp.update(
-        package_type=report.get("package_type", "??"), size=report.get("size", -1)
-    )
-
     report["files"] = by_files_parse_report(report)
-
-    if len(report.get("cpl_list", [])) > 0:
-        cpl = report["cpl_list"][0]["Info"]["CompositionPlaylist"]
-
-        update_movie(dcp, cpl["NamingConvention"]["FilmTitle"]["Value"])
-
-        dcp.update(kind=cpl["ContentKind"])
-    else:
-        update_movie(dcp, dcp.title.split("_")[0])
 
     report["movx_parse_probe"] = probe
     report["movx_parse_kdm"] = kdm
     report["movx_parse_pkey"] = pkey
+
+    update_dcp_infos(dcp, report)
 
     job.finished.set()
 
@@ -190,7 +185,7 @@ def parse(dcp):
 
     job.add()
 
-    make_transient(dcp)
+    # make_transient(dcp)
 
     ttask = jobs.JobTask(job, parse_job, dcp=dcp, probe=False)
 
@@ -227,13 +222,24 @@ def check_job(job, dcp, ov_dcp_path=None, profile=None, kdm=None, pkey=None):
     _profile = {}
 
     profile = profile or default_check_profile
-    
+
     with open(profile, "r") as fp:
         _profile = json.load(fp)
 
     if dcp.location.type == LocationType.Agent:
-        report = start_poll_agent_job(job, dcp, "check", data={ "ov_dcp_path": ov_dcp_path, "profile": _profile, "kdm": kdm, "pkey": pkey })
+        report = start_poll_agent_job(
+            job,
+            dcp,
+            "check",
+            data={
+                "ov_dcp_path": ov_dcp_path,
+                "profile": _profile,
+                "kdm": kdm,
+                "pkey": pkey,
+            },
+        )
     elif dcp.location.type == LocationType.Local:
+
         def check_job_cb(file, current, final, t):
             job.update(progress=current / final)
 
@@ -243,7 +249,7 @@ def check_job(job, dcp, ov_dcp_path=None, profile=None, kdm=None, pkey=None):
         )
 
         report = check_report_to_dict(check_report)
-    
+
     report["movx_check_profile"] = str(profile)
     report["movx_check_ov"] = str(ov_dcp_path)
     report["movx_check_kdm"] = str(kdm)
@@ -279,24 +285,41 @@ def update_movie(dcp, movie_title):
     """
     Update a DCP with an existing movie or not
     """
-    with Session() as session:
-        movie = session.scalars(
-            select(Movie).filter(Movie.title == movie_title)
-        ).first()
+    movie = Movie.filter(Movie.title == movie_title).first()
 
-        dcp = session.query(DCP).get(dcp.id)
+    dcp = DCP.get(dcp.id)
 
-        if movie is None:
-            movie = Movie(title=movie_title)
-            session.add(movie)
-            session.commit()
-        else:
-            if movie.dcps:
-                if dcp in movie.dcps():
-                    return
+    if movie is None:
+        movie = Movie(title=movie_title)
+        movie.add()
+    else:
+        if movie.dcps:
+            if dcp in movie.dcps():
+                return None
 
-        dcp.movie = movie
-        session.commit()
+    with dcp.fresh() as _dcp:
+        _dcp.movie = movie
+
+
+def update_dcp_infos(dcp, report):
+    dcp = dcp.update(
+        package_type=report.get("package_type", "??"), size=report.get("size", -1)
+    )
+
+    cpl = False
+    if len(report.get("cpl_list", [])) > 0:
+        cpl = report["cpl_list"][0]["Info"]["CompositionPlaylist"]
+
+    if cpl:
+        update_movie(dcp, cpl["NamingConvention"]["FilmTitle"]["Value"])
+
+        with dcp.fresh() as _dcp:
+            _dcp.update(kind=cpl["ContentKind"])
+    else:
+        update_movie(dcp, dcp.title.split("_")[0])
+
+    with dcp.fresh() as _dcp:
+        print(_dcp)
 
 
 def human_check_job(job, dcp):
@@ -310,6 +333,7 @@ def human_check_job(job, dcp):
     # make_transient(dcp)
 
     return job.id
+
 
 def copy_task(dcp, target_folder):
     """

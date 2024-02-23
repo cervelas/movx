@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import importlib.metadata
 
-version = importlib.metadata.version('movx')
+version = importlib.metadata.version("movx")
 
 DEFAULT_CHECK_PROFILE = {
     "criticality": {
@@ -45,7 +45,6 @@ DEFAULT_CHECK_PROFILE = {
 }
 
 
-
 def _flat_gen(d, parent_key=None):
     for k, v in d.items():
         new_key = parent_key + (k,) if parent_key else (k,)
@@ -75,15 +74,16 @@ def finditem(dic, key, value):
                     ret.extend(finditem(e, key, value))
     return ret
 
+
 def is_linux():
     return sys.platform.startswith("linux")
+
 
 def is_win():
     return sys.platform.startswith("win")
 
 
 def check_report_to_dict(checkreport):
-
     report = checkreport.to_dict()
 
     report["succeeded"] = [s.to_dict() for s in checkreport.checks_succeeded()]
@@ -101,4 +101,3 @@ def check_report_to_dict(checkreport):
     report["bypassed"] = [b.to_dict() for b in checkreport.checks_bypassed()]
 
     return report
-

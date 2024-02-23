@@ -1,7 +1,14 @@
 import uvicorn
 import webview
 
-from movx import start_waved, UvicornServer, ENTRY_POINT, LOCAL_URL, UvicornServer, start_waved
+from movx import (
+    start_waved,
+    UvicornServer,
+    ENTRY_POINT,
+    LOCAL_URL,
+    UvicornServer,
+    start_waved,
+)
 
 if __name__ == "__main__":
     start_waved()

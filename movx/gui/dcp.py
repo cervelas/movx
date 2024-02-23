@@ -5,7 +5,6 @@ from movx.core.db import DCP, Tags
 from movx.gui.cards.dcp import add_infos_cards
 
 
-
 @on()
 async def dcp_tags_picker(q):
     if q.client.current_dcp:
@@ -26,7 +25,6 @@ async def dcp_parse_action(q):
 
 @on()
 async def dcp_probe_action(q):
-    
     kdm = q.args.kdm_probe_upload[0] if q.args.kdm_probe_upload else None
     if kdm:
         kdm = WAVE_DATA_PATH / kdm[4:]
@@ -35,8 +33,7 @@ async def dcp_probe_action(q):
     if pkey:
         pkey = WAVE_DATA_PATH / pkey[4:]
 
-    core.dcps.probe(DCP.get(q.args.dcp_probe_action), 
-                    kdm = kdm, pkey = pkey)
+    core.dcps.probe(DCP.get(q.args.dcp_probe_action), kdm=kdm, pkey=pkey)
     await show_dcp(q, q.args.dcp_probe_action)
 
 
@@ -47,9 +44,9 @@ async def dcp_check_action(q):
     profile = q.args.profile_check_choice
     if dcp.package_type == "VF":
         ov = DCP.get(q.args.ov_check_choice)
-        core.dcps.check(dcp, profile = profile, ov = ov)
+        core.dcps.check(dcp, profile=profile, ov=ov)
     else:
-        core.dcps.check(dcp, profile = profile)
+        core.dcps.check(dcp, profile=profile)
     await show_dcp(q, q.args.dcp_check_action)
 
 

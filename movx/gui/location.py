@@ -5,9 +5,9 @@ from movx.core.db import Location, DCP, Tags
 from movx.gui.cards.dcp import add_infos_cards
 from movx.gui.cards.dcps import dcps_table
 
+
 @on("#loc/{id}")
 async def show_loc(q: Q, id):
-
     location = Location.get(id)
 
     setup_page(q, "%s DCP's" % location.name)
@@ -21,7 +21,12 @@ async def show_loc(q: Q, id):
                     ui.text_xl("%s DCP's" % location.name),
                     ui.inline(
                         items=[
-                            ui.button(name="scan_location", label="", icon="refresh", value=str(location.id)),
+                            ui.button(
+                                name="scan_location",
+                                label="",
+                                icon="refresh",
+                                value=str(location.id),
+                            ),
                             # ui.button(name='show_flat_list', label='Flat', icon="BulletedTreeList"),
                             # ui.button(name='show_detail_list', label='Details', icon="LineStyle"),
                             # ui.button(name='show_manage_list', label='Management', icon="WaitlistConfirm"),
@@ -36,4 +41,3 @@ async def show_loc(q: Q, id):
     )
 
     await q.page.save()
-

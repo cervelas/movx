@@ -11,6 +11,7 @@ from movx.core.dcps import get_available_check_profiles
 # TAGS
 ################
 
+
 @on()
 async def add_tag_dialog(q):
     q.page["meta"].dialog = ui.dialog(
@@ -46,6 +47,7 @@ def update_tag_dialog(q, tag):
         ],
     )
 
+
 def delete_tag_dialog(q, tag):
     q.page["meta"].dialog = ui.dialog(
         title="Delete Tag",
@@ -55,6 +57,7 @@ def delete_tag_dialog(q, tag):
             ui.button(name="do_delete_tag", label="Update", value=str(tag.id)),
         ],
     )
+
 
 def tags_card(q, tags):
     tags_commands = [
@@ -193,13 +196,14 @@ def dir_browser(q):
 
     return [ui.text_l(str(q.args.cwd or "/"))] + items + [ui.separator()]
 
+
 #################
 # CHECK PROFILES
 #################
 
+
 @on()
 async def new_profile_dialog(q: Q):
-
     profiles = get_available_check_profiles()
 
     q.page["meta"].dialog = ui.dialog(
@@ -207,26 +211,31 @@ async def new_profile_dialog(q: Q):
         name="new_profile_dialog",
         items=[
             ui.textbox(
-                name="new_profile", label="Name", required=True,
+                name="new_profile",
+                label="Name",
+                required=True,
             ),
-
-            ui.dropdown(name="tpl_profile", label="Based on", required=True,
-                    placeholder="Select the profile to base the new profile on",
-                    choices=[ ui.Choice(name=str(f.resolve()), label=f.stem) for f in profiles ]),
-
+            ui.dropdown(
+                name="tpl_profile",
+                label="Based on",
+                required=True,
+                placeholder="Select the profile to base the new profile on",
+                choices=[
+                    ui.Choice(name=str(f.resolve()), label=f.stem) for f in profiles
+                ],
+            ),
             ui.button(name="create_profile", label="Create"),
         ],
     )
-    await q.page.save()    
+    await q.page.save()
+
 
 def check_profile_editor_card(q: Q):
-    
     editor_items = []
 
     profiles = get_available_check_profiles()
 
     if q.args.edited_profile:
-
         profile = {}
 
         name = Path(q.args.edited_profile).name
@@ -235,52 +244,86 @@ def check_profile_editor_card(q: Q):
             profile = json.load(fp)
 
         levels = profile.get("criticality", [])
-        warnings = [ name for name, level in levels.items() if level == "WARNING" ]
-        errors = [ name for name, level in levels.items() if level == "ERROR" ]
+        warnings = [name for name, level in levels.items() if level == "WARNING"]
+        errors = [name for name, level in levels.items() if level == "ERROR"]
         bypass = profile.get("bypass", [])
         allowed = profile.get("allowed_foreign_files", [])
 
         def h(arr):
-            return "%spx" % max(17*len(arr)+8, 30)
-        
-        editor_items = [ 
-            ui.text_xl("Edit %s Check Profile" % name), 
+            return "%spx" % max(17 * len(arr) + 8, 30)
+
+        editor_items = [
+            ui.text_xl("Edit %s Check Profile" % name),
             ui.text_l("Warning Level Tests"),
-            ui.textbox(name='warnings_tests', label='', width="400px",
-                        value="\n".join(warnings), height=h(warnings),
-                        multiline=True, spellcheck=False),
-            
+            ui.textbox(
+                name="warnings_tests",
+                label="",
+                width="400px",
+                value="\n".join(warnings),
+                height=h(warnings),
+                multiline=True,
+                spellcheck=False,
+            ),
             ui.text_l("Error Level Tests"),
-            ui.textbox(name='errors_tests', label='', 
-                        value="\n".join(errors), height=h(errors),
-                        multiline=True, spellcheck=False),
-            
+            ui.textbox(
+                name="errors_tests",
+                label="",
+                value="\n".join(errors),
+                height=h(errors),
+                multiline=True,
+                spellcheck=False,
+            ),
             ui.text_l("Bypassed Tests"),
-            ui.textbox(name='bypass_tests', label='', placeholder="one test per line",
-                        value="\n".join(bypass), height=h(bypass),
-                        multiline=True, spellcheck=False),
-            
+            ui.textbox(
+                name="bypass_tests",
+                label="",
+                placeholder="one test per line",
+                value="\n".join(bypass),
+                height=h(bypass),
+                multiline=True,
+                spellcheck=False,
+            ),
             ui.text_l("Allowed Foreign Files"),
-            ui.textbox(name='foreign_files', label='', placeholder="one file per line",
-                        value="\n".join(allowed), height=h(allowed),
-                        multiline=True, spellcheck=False),
-            
-            ui.textbox(name="profile_name", label="name", required=False, value=name, visible=False),
-            ui.button(name="update_profile", label="Update") 
+            ui.textbox(
+                name="foreign_files",
+                label="",
+                placeholder="one file per line",
+                value="\n".join(allowed),
+                height=h(allowed),
+                multiline=True,
+                spellcheck=False,
+            ),
+            ui.textbox(
+                name="profile_name",
+                label="name",
+                required=False,
+                value=name,
+                visible=False,
+            ),
+            ui.button(name="update_profile", label="Update"),
         ]
 
     return ui.form_card(
         box=ui.box(zone="2cols", size="0"),
         items=[
-            ui.inline([
-                ui.text_l("Profiles Editor"),
-                ui.button(name="new_profile_dialog", label="New Profile", icon="Add")
-            ]),
-            
-            ui.dropdown(name="edited_profile", label="Edit existing profile file", trigger=True,
-                    placeholder="Select the file to edit", value=q.args.edited_profile,
-                    choices=[ ui.Choice(name=str(f.resolve()), label=f.stem) for f in profiles ]),
-
-
-        ] + editor_items
+            ui.inline(
+                [
+                    ui.text_l("Profiles Editor"),
+                    ui.button(
+                        name="new_profile_dialog", label="New Profile", icon="Add"
+                    ),
+                ]
+            ),
+            ui.dropdown(
+                name="edited_profile",
+                label="Edit existing profile file",
+                trigger=True,
+                placeholder="Select the file to edit",
+                value=q.args.edited_profile,
+                choices=[
+                    ui.Choice(name=str(f.resolve()), label=f.stem) for f in profiles
+                ],
+            ),
+        ]
+        + editor_items,
     )

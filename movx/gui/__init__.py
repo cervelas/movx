@@ -102,14 +102,14 @@ meta = ui.meta_card(
     title="",
     theme="default",
     layouts=layouts["default"],
-    #notification_bar=ui.notification_bar(
+    # notification_bar=ui.notification_bar(
     #    text="",
     #    type="success",
     #    position="top-right",
     #    # buttons=[ui.button(name='btn', label='Link button', link=True)]
-    #),
+    # ),
     stylesheet=ui.inline_stylesheet(style),
-    #notification="",
+    # notification="",
 )
 
 nav = ui.nav_card(
@@ -132,12 +132,11 @@ nav = ui.nav_card(
 
 
 def setup_page(q: Q, title=None, layout="default"):
-
     if q.client.nosetup:
         q.client.nosetup = False
         return
-    #print(q.page["meta"]["dialog"])
-    #if q.page["meta"]["dialog"]:
+    # print(q.page["meta"]["dialog"])
+    # if q.page["meta"]["dialog"]:
     if not q.client.nodrop:
         q.page.drop()
         q.client.nodrop = False
@@ -148,9 +147,9 @@ def setup_page(q: Q, title=None, layout="default"):
     q.page["meta"] = meta
 
     q.page["meta"].layouts = layouts.get(layout, layouts["default"])
-    
+
     if q.client.hidenotif:
-        q.page["meta"].notification_bar=ui.notification_bar(text="")
+        q.page["meta"].notification_bar = ui.notification_bar(text="")
         q.page["meta"].notifications = ""
         q.client.hidenotif = False
 
@@ -158,7 +157,6 @@ def setup_page(q: Q, title=None, layout="default"):
     nav.value = q.client.__loc_hash
 
     q.page["nav"] = nav
-
 
 
 def breadcrumbs(q: Q, crumbs=[]):
@@ -286,7 +284,9 @@ def get_windows_drives():
 def get_linux_drives():
     # execute this : mount -l -t ext4,ext2
     fs_types = ["ext2", "ext3", "ext4", "fat", "exfat"]
-    lines = subprocess.check_output(["mount", "-l", "-t", ",".join(fs_types)], encoding="utf-8")
+    lines = subprocess.check_output(
+        ["mount", "-l", "-t", ",".join(fs_types)], encoding="utf-8"
+    )
     drives = []
     for l in lines.split("\n"):
         if len(l.split(" ")) >= 3:
@@ -294,12 +294,14 @@ def get_linux_drives():
 
     return drives
 
-def notif(q, text, type = None):
-    q.page["meta"].notification_bar=ui.notification_bar(
+
+def notif(q, text, type=None):
+    q.page["meta"].notification_bar = ui.notification_bar(
         text=text,
         type=type or "success",
-        position='top-center',
+        position="top-center",
     )
+
 
 # do not mess with namespaces
 from h2o_wave import routing as h2o_r

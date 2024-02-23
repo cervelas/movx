@@ -24,7 +24,7 @@ LINUX_WAVE_FOLDER = Path(__file__).parent / "vendor" / "wave-1.0.0-linux-amd64"
 
 WAVE_PATH = LINUX_WAVE_FOLDER
 
-if is_win(): 
+if is_win():
     WAVE_PATH = WIN_WAVE_FOLDER
 
 WAVE_DATA_PATH = WAVE_PATH / "data" / "f"
@@ -40,7 +40,7 @@ WIN_DEPS = {
     "asdcplib": current_path / "./vendor/asdcplib-2.7.19-tools/",
     "mediainfo": current_path / "./vendor/MediaInfo_CLI_22.12_Windows_x64/",
     "sox": current_path / "./vendor/sox-14.4.2-win32/sox-14.4.2/",
-} 
+}
 
 locale.setlocale(locale.LC_ALL, "")
 
@@ -53,17 +53,20 @@ dotmovx = Path.home() / ".movx"
 
 dotmovx.mkdir(exist_ok=True)
 
+
 def shutdown(sig, frame):
     print("movx shutting down...")
     sys.exit(0)
 
+
 signal.signal(signal.SIGINT, shutdown)
+
 
 def include_deps():
     print("checking dependencies... ", end="")
 
     if is_win():
-        for n, p in WIN_DEPS.items():            
+        for n, p in WIN_DEPS.items():
             if p.is_dir():
                 ensure(str(p.resolve()))
             else:
@@ -71,10 +74,16 @@ def include_deps():
                 exit(0)
 
     if is_linux():
-        if subprocess.call(["hash", "asdcp-info"], shell=True) + subprocess.call(["hash", "asdcp-test"], shell=True) > 0:
-            print("Fatal Error: Please install 'asdcplib' (gihub.com/cincert/asdcplib) package on this system")
+        if (
+            subprocess.call(["hash", "asdcp-info"], shell=True)
+            + subprocess.call(["hash", "asdcp-test"], shell=True)
+            > 0
+        ):
+            print(
+                "Fatal Error: Please install 'asdcplib' (gihub.com/cincert/asdcplib) package on this system"
+            )
             exit(0)
-        
+
         if subprocess.call(["hash", "mediainfo"], shell=True) > 0:
             print("Fatal Error: Please install 'mediainfo' package on this system")
             exit(0)
@@ -82,25 +91,28 @@ def include_deps():
         if subprocess.call(["hash", "sox"], shell=True) > 0:
             print("Fatal Error: Please install 'sox' package on this system")
             exit(0)
-    
+
     print("OK")
+
 
 include_deps()
 
+
 def start_waved(logs=False):
     from movx.core import db, locations, dcps
+
     print("starting Wave Server")
     os.environ["H2O_WAVE_NO_LOG"] = "0" if logs else "1"
     cwd = os.getcwd()
     waved_exe = "waved"
-    if is_win(): 
+    if is_win():
         waved_exe = "waved.exe"
     os.chdir(WAVE_PATH)
     path = WAVE_PATH / waved_exe
     assets_path = (
-       "/assets/@%s" % "d:/dev/movx/movx/assets"
+        "/assets/@%s" % "d:/dev/movx/movx/assets"
     )  # (Path(__file__).parent / "assets/")
-    subp = [path, LOCAL_ADDR] # "-public-dir", assets_path]
+    subp = [path, LOCAL_ADDR]  # "-public-dir", assets_path]
     print(subp)
     try:
         subprocess.Popen(subp)
@@ -115,7 +127,7 @@ class UvicornServer(multiprocessing.Process):
         super().__init__()
         self.config = config
         self.server = uvicorn.Server(config=config)
-        #self.server.install_signal_handlers()
+        # self.server.install_signal_handlers()
         self.daemon = True
 
     def stop(self):
@@ -134,9 +146,11 @@ def start_serve(log_level="warning", reload=False, browse=False):
         print("")
     uvicorn.run(ENTRY_POINT, log_level=log_level, reload=reload)
 
+
 def start_agent(host="0.0.0.0", port=11011, debug=False, noblock=False):
-    
-    config = uvicorn.Config("movx.core.agent:app", host=host, port=port, log_level="warning")
+    config = uvicorn.Config(
+        "movx.core.agent:app", host=host, port=port, log_level="warning"
+    )
     if noblock:
         instance = UvicornServer(config)
         instance.start()

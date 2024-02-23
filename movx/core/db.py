@@ -34,7 +34,7 @@ from sqlalchemy.orm import (
 
 db_path = Path.home() / ".movx" / "movx.db"
 
-#db_path.unlink()
+# db_path.unlink()
 
 db_url = "sqlite:///%s" % db_path.absolute()
 
@@ -177,13 +177,13 @@ class Tags(Base):
         if len(name) < 3:
             raise ValueError("Not a valid name: %s" % name)
         return name
-    
-    #@validates("color")
-    #def validate_path(self, key, color):
+
+    # @validates("color")
+    # def validate_path(self, key, color):
     #    if not color:
     #        raise ValueError("Not a valid color: %s" % name)
     #    return color
-    
+
 
 class LocationType(enum.Enum):
     Local = 1
@@ -216,11 +216,14 @@ class Location(Base):
                 raise ValueError("Path %s do not exist" % Path(self.path).absolute())
         elif self.type == LocationType.Agent:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(2) #Timeout in case of port not open
+            s.settimeout(2)  # Timeout in case of port not open
             try:
-                s.connect((self.uri, 11011)) #Port ,Here 22 is port 
+                s.connect((self.uri, 11011))  # Port ,Here 22 is port
             except:
-                raise ValueError("URI %s do not contain a MovX agent Running or is blocked by network firewall" % Path(self.uri).absolute())
+                raise ValueError(
+                    "URI %s do not contain a MovX agent Running or is blocked by network firewall"
+                    % Path(self.uri).absolute()
+                )
         return True
 
     def dcps(self):
@@ -418,21 +421,25 @@ class Job(Base):
     def is_running(self):
         return True if self.status() == "running" else False
 
+
 print("Configuring Database...", end="")
 
 configure_mappers()
 
 engine = create_engine(db_url)
 Session = sessionmaker(bind=engine, expire_on_commit=False)
-#Scoped_Session = scoped_session(session_factory)
+# Scoped_Session = scoped_session(session_factory)
 
 Base.metadata.create_all(engine)
 
 anonymous = User("anonymous", avatar="anonymous")
 
 print("OK")
+
+
 def reset_db():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+
 
 # anonymous.add()

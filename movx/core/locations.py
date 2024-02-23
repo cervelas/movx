@@ -7,8 +7,8 @@ from sqlalchemy import delete as _delete, and_
 from movx.core import version
 from movx.core.db import Location, DCP, LocationType, Session
 
-def scan_network(subnet, port):
 
+def scan_network(subnet, port):
     def connect(hostname, port):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket.setdefaulttimeout(0.5)
@@ -18,10 +18,11 @@ def scan_network(subnet, port):
 
     subnet = ".".join(subnet.split(".")[:2])
 
-    for i in range(0,255):
+    for i in range(0, 255):
         res = connect("%s." % str(i), 11011)
         if res:
-            print("Device found at: ", "192.168.1."+str(i) + ":"+str(22))
+            print("Device found at: ", "192.168.1." + str(i) + ":" + str(22))
+
 
 def agent_infos(uri):
     infouri = "http://%s" % uri
@@ -32,15 +33,17 @@ def agent_infos(uri):
     else:
         raise Exception("Wrong response: %s" % r)
 
-def scan_agent(uri, path):
 
+def scan_agent(uri, path):
     paths = []
 
     agent_version = agent_infos(uri)["version"]
 
     if agent_version != version:
-        raise Exception("Version mismatch! Agent is %s, host is %s" % (agent_version, version))
-    
+        raise Exception(
+            "Version mismatch! Agent is %s, host is %s" % (agent_version, version)
+        )
+
     scanuri = "http://%s/scan" % uri
 
     try:
@@ -54,7 +57,8 @@ def scan_agent(uri, path):
         print(e)
         raise e
 
-    return [ Path(p) for p in paths ]
+    return [Path(p) for p in paths]
+
 
 def scan_local(path):
     """
@@ -64,20 +68,20 @@ def scan_local(path):
     path = Path(path).resolve().absolute()
 
     assetmaps = list(path.glob("**/ASSETMAP*"))
-    
-    return [ am.parent for am in assetmaps ]
+
+    return [am.parent for am in assetmaps]
+
 
 def get_root_path(location):
-
     if location.type == LocationType.Local:
         return Path.cwd()
     if location.type == LocationType.Agent:
         return agent_infos()["root_path"]
     else:
         raise Exception("Cannot get Root path for %s: Type Unknown" % location.name)
-    
-def __scan(location):
 
+
+def __scan(location):
     if location.type == LocationType.Local:
         return scan_local(location.path)
     if location.type == LocationType.Agent:
@@ -85,8 +89,8 @@ def __scan(location):
     else:
         raise Exception("Cannot Scan Location %s: Type Unknown" % location.name)
 
-def scan4dcps(location):
 
+def scan4dcps(location):
     paths = __scan(location)
     dcps = list(DCP.filter(DCP.location.has(id=location.id)).all())
 
@@ -96,7 +100,7 @@ def scan4dcps(location):
 
     for dcp in dcps:
         if Path(dcp.path) in paths:
-            dcp.update( status = "present")
+            dcp.update(status="present")
             paths.remove(Path(dcp.path))
         else:
             dcp.delete()
@@ -108,6 +112,7 @@ def scan4dcps(location):
 
     return dcps
 
+
 def scan_all():
     """
     Scan every locations for folders with ASSETMAP recursively
@@ -115,10 +120,3 @@ def scan_all():
     for location in Location.get():
         scan4dcps(location)
 
-
-def delete_with_dcp(location):
-    # deleteall
-    with session:
-        session.execute(_delete(DCP).where(DCP.location_id == location.id))
-        session.execute(_delete(Location).where(Location.id == location.id))
-        session.commit()

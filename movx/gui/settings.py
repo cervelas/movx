@@ -8,7 +8,12 @@ from movx.core import locations, dcps, DEFAULT_CHECK_PROFILE
 from movx.gui import notif, setup_page
 from movx.core import db
 from movx.gui.cards import debug_card
-from movx.gui.cards.locations import location_del_dialog, locations_list_card, show_add_location_panel, update_location_panel
+from movx.gui.cards.locations import (
+    location_del_dialog,
+    locations_list_card,
+    show_add_location_panel,
+    update_location_panel,
+)
 from movx.gui.cards.settings import (
     add_tag_dialog,
     check_profile_editor_card,
@@ -18,12 +23,12 @@ from movx.gui.cards.settings import (
     tags_card,
 )
 
+
 @on("#settings")
 async def settings(q: Q):
     setup_page(q, "Settings", layout="2cols")
 
     try:
-
         q.page["db_utils"] = db_utils
 
         q.page["status_utils"] = tags_card(q, db.Tags.get())
@@ -43,6 +48,7 @@ async def settings(q: Q):
 # TAGS
 ############
 
+
 @on()
 def add_defaults_tags():
     """
@@ -54,17 +60,20 @@ def add_defaults_tags():
     db.Tags("blocked", "#ff8181").add()
     notif("Default Tags Added")
 
+
 @on()
 async def update_tag(q):
     tag = db.Tags.get(q.args.update_tag)
     update_tag_dialog(q, tag)
     await q.page.save()
 
+
 @on()
 async def delete_tag(q):
     tag = db.Tags.get(q.args.delete_tag)
     delete_tag_dialog(q, tag)
     await q.page.save()
+
 
 @on()
 async def do_add_tag(q):
@@ -78,6 +87,7 @@ async def do_add_tag(q):
     except Exception as e:
         notif(q, str("\n".join(e.args)), "error")
 
+
 @on()
 async def do_update_tag(q):
     try:
@@ -88,6 +98,7 @@ async def do_update_tag(q):
         notif(q, "Tag %s Updated" % tag.name)
     except Exception as e:
         notif(q, str("\n".join(e.args)), "error")
+
 
 @on()
 async def do_delete_tag(q):
@@ -105,33 +116,30 @@ async def do_delete_tag(q):
 # PROFILE
 ############
 
+
 @on()
 async def create_profile(q):
     if q.args.tpl_profile and q.args.new_profile:
         new_profile = Path(q.args.tpl_profile).parent / q.args.new_profile
         shutil.copyfile(q.args.tpl_profile, "%s.json" % new_profile)
         notif(q, "%s profile created (%s.json)" % (q.args.new_profile, new_profile))
-        #Path(q.args.tpl_profile).copy(q.args.new_profile)
-        #Path.
+        # Path(q.args.tpl_profile).copy(q.args.new_profile)
+        # Path.
     await settings(q)
+
 
 @on()
 async def update_profile(q):
-
     file = q.args.edited_profile
 
     crit = {}
 
-    crit.update({
-        n: "WARNING" for n in q.args.warnings_tests.split("\n")
-    })
+    crit.update({n: "WARNING" for n in q.args.warnings_tests.split("\n")})
 
-    crit.update({
-        n: "ERROR" for n in q.args.errors_tests.split("\n")
-    })
+    crit.update({n: "ERROR" for n in q.args.errors_tests.split("\n")})
 
     if crit.get("default") is None:
-        crit.update({ "default": "ERROR" })
+        crit.update({"default": "ERROR"})
         print("Added default entry ERROR level")
 
     profile = {
@@ -144,14 +152,16 @@ async def update_profile(q):
 
     profile["foreign_files"] = q.args.foreign_files.split("\n")
 
-    with open(q.args.edited_profile, 'w') as fp: 
+    with open(q.args.edited_profile, "w") as fp:
         json.dump(profile, fp)
 
     await settings(q)
 
+
 ############
 # DBUTILS
 ############
+
 
 @on()
 async def dbutils_del_all_locs(q: Q):
@@ -174,6 +184,7 @@ async def dbutils_del_all_tasks(q):
 @on()
 async def dbutils_del_all_dcps(q):
     db.DCP.clear()
+    db.Movie.clear()
     q.page["meta"].notification = "Deleted all DCPs"
     # todo: notification
     await q.page.save()
@@ -183,6 +194,7 @@ async def dbutils_del_all_dcps(q):
 @on()
 async def dbutils_del_all(q):
     db.Job.clear()
+    db.Movie.clear()
     db.DCP.clear()
     db.Location.clear()
     q.page["meta"].notification = "All things deleted !"

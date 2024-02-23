@@ -16,7 +16,7 @@ from movx.gui.cards.job import check_report_items
 
 def add_infos_cards(q, dcp):
     add_dcp_header_card(q, dcp)
-    #dcp_infos_card(q, dcp)
+    # dcp_infos_card(q, dcp)
     add_dcp_tags_card(q, dcp)
     add_dcp_notes_card(q, dcp)
     add_dcp_parse_card(q, dcp)
@@ -24,14 +24,21 @@ def add_infos_cards(q, dcp):
     add_dcp_check_card(q, dcp)
     # add_dcp_actions_card(q, dcp)
 
-def add_dcp_header_card(q, dcp):
 
+def add_dcp_header_card(q, dcp):
     movie_btn = []
     if dcp.movie is not None:
-        movie_btn = [ ui.inline([
-                            ui.button(name="goto_movie", label=f"{dcp.movie.title} >", value=str(dcp.movie.id)),
-                        ])
-                    ]
+        movie_btn = [
+            ui.inline(
+                [
+                    ui.button(
+                        name="goto_movie",
+                        label=f"{dcp.movie.title} >",
+                        value=str(dcp.movie.id),
+                    ),
+                ]
+            )
+        ]
 
     q.page.add(
         "dcp_header",
@@ -41,12 +48,16 @@ def add_dcp_header_card(q, dcp):
                 ui.inline(
                     justify="between",
                     items=[
-                        ui.text_xl(f"{dcp.title} @ [{dcp.location.name}](#loc/{dcp.location.id})"),
-                    ] + movie_btn,
+                        ui.text_xl(
+                            f"{dcp.title} @ [{dcp.location.name}](#loc/{dcp.location.id})"
+                        ),
+                    ]
+                    + movie_btn,
                 ),
             ],
         ),
     )
+
 
 def add_dcp_tags_card(q, dcp):
     dcp_tags = []
@@ -79,6 +90,7 @@ def add_dcp_tags_card(q, dcp):
         ),
     )
 
+
 def add_dcp_notes_card(q, dcp):
     q.page.add(
         "dcp_notes_form",
@@ -94,7 +106,7 @@ def add_dcp_notes_card(q, dcp):
                             multiline=True,
                             value=dcp.notes,
                             width="100%",
-                            height="300px"
+                            height="300px",
                         )
                     ],
                 ),
@@ -102,23 +114,16 @@ def add_dcp_notes_card(q, dcp):
         ),
     )
 
+
 def job_status_items(job):
     job_items = []
     if job.finished_at > 0:
         st = datetime.fromtimestamp(job.finished_at)
-        job_items = [
-            ui.text_s(
-                st.strftime("%m/%d/%Y %H:%M:%S")
-            )
-        ]
+        job_items = [ui.text_s(st.strftime("%m/%d/%Y %H:%M:%S"))]
     else:
-        job_items = [
-            ui.text_s(
-                "Job in Progress (%s%%)"
-                % int(job.progress * 100)
-            )
-        ]
+        job_items = [ui.text_s("Job in Progress (%s%%)" % int(job.progress * 100))]
     return job_items
+
 
 def add_dcp_parse_card(q, dcp):
     jobs = dcp.jobs(type=JobType.parse)
@@ -128,40 +133,47 @@ def add_dcp_parse_card(q, dcp):
     if len(jobs) == 0:
         job_items = [ui.text_l("DCP Not Parsed")]
     else:
-        job_items = [ ui.text_l(f"[Last Parse Job](#job/{jobs[0].id})") ] + job_status_items(jobs[0])
+        job_items = [
+            ui.text_l(f"[Last Parse Job](#job/{jobs[0].id})")
+        ] + job_status_items(jobs[0])
         files_items = dcp_files_items(jobs[0].result)
-
 
     q.page.add(
         "dcp_parse_card",
         ui.form_card(
             box=ui.box("content"),
             items=[
-                ui.inline(justify="between",
+                ui.inline(
+                    justify="between",
                     items=job_items
                     + [
                         ui.button(
                             name="dcp_parse_action", label="Parse", value=str(dcp.id)
                         ),
-                    ]
+                    ],
                 ),
-            ] + files_items,
+            ]
+            + files_items,
         ),
     )
+
 
 def dcp_files_items(report):
     items = []
     files = by_files_parse_report(report)
     i = 0
     for name, props in files.items():
-        items.append( ui.expander(
-                        name="file_%s%s_expander" % (name, i),
-                        label="%s File %s" % ( props.get("__type"), name ),
-                        items=[full_table(flat(props))],
-                    ) )
+        items.append(
+            ui.expander(
+                name="file_%s%s_expander" % (name, i),
+                label="%s File %s" % (props.get("__type"), name),
+                items=[full_table(flat(props))],
+            )
+        )
         i += 1
 
     return items
+
 
 def add_dcp_probe_card(q, dcp):
     jobs = dcp.jobs(type=JobType.probe)
@@ -172,23 +184,26 @@ def add_dcp_probe_card(q, dcp):
     if len(jobs) == 0:
         job_items = [ui.text_l("DCP Not Probed")]
     else:
-        job_items = [ ui.text_l(f"[Last Probe Job](#job/{jobs[0].id})") ] +job_status_items(jobs[0])
+        job_items = [
+            ui.text_l(f"[Last Probe Job](#job/{jobs[0].id})")
+        ] + job_status_items(jobs[0])
 
     items = [
         ui.inline(
             justify="between",
-            items= job_items
-            + [     ui.button(name="dcp_probe_action", label="Probe", value=str(dcp.id)),
-                    #ui.inline([
-                    #    ui.text('KDM'),
-                    #    ui.file_upload(name='kdm_probe_upload', compact=True)
-                    #], justify="end"),
-                    #ui.inline([
-                    #    ui.text('Private Key'),
-                    #    ui.file_upload(name='pkey_probe_upload', compact=True),
-                    #], justify="end"),
-                ]
-            )
+            items=job_items
+            + [
+                ui.button(name="dcp_probe_action", label="Probe", value=str(dcp.id)),
+                # ui.inline([
+                #    ui.text('KDM'),
+                #    ui.file_upload(name='kdm_probe_upload', compact=True)
+                # ], justify="end"),
+                # ui.inline([
+                #    ui.text('Private Key'),
+                #    ui.file_upload(name='pkey_probe_upload', compact=True),
+                # ], justify="end"),
+            ],
+        )
     ] + items
 
     q.page.add(
@@ -201,31 +216,42 @@ def add_dcp_probe_card(q, dcp):
 
 
 def add_dcp_check_card(q: Q, dcp):
-
     jobs = dcp.jobs(type=JobType.check)
 
     profiles = get_available_check_profiles()
-    
+
     job_items = []
     if len(jobs) == 0:
         job_items = [ui.text_l("DCP Not Checked")]
     else:
-        job_items = [ ui.text_l(f"[Last Check Job](#job/{jobs[0].id})") ] + job_status_items(jobs[0])
+        job_items = [
+            ui.text_l(f"[Last Check Job](#job/{jobs[0].id})")
+        ] + job_status_items(jobs[0])
 
-    check_options = [ ui.dropdown(name="profile_check_choice", label="Choose a Check Profile", 
-                        placeholder="Select the right Profile for this check",
-                        choices=[ ui.Choice(name=str(f.resolve()), label=f.stem) for f in profiles ]) 
-                        ]
+    check_options = [
+        ui.dropdown(
+            name="profile_check_choice",
+            label="Choose a Check Profile",
+            placeholder="Select the right Profile for this check",
+            choices=[ui.Choice(name=str(f.resolve()), label=f.stem) for f in profiles],
+        )
+    ]
 
     if dcp.package_type == "VF":
-        ovs = [ ov for ov in dcp.movie.ovs() if ov.location.id == dcp.location.id ]
-        check_options +=  [ ui.dropdown("ov_check_choice", choices=[ 
-                                ui.choice(name=str(ov_dcp.id), label=ov_dcp.title) for ov_dcp in ovs ],
-                                placeholder = "Choose a OV",
-                                tooltip = "OV must be in the same location as VF",
-                                label = "Original Version DCP",
-                                width = "600px") ]
-    
+        ovs = [ov for ov in dcp.movie.ovs() if ov.location.id == dcp.location.id]
+        check_options += [
+            ui.dropdown(
+                "ov_check_choice",
+                choices=[
+                    ui.choice(name=str(ov_dcp.id), label=ov_dcp.title) for ov_dcp in ovs
+                ],
+                placeholder="Choose a OV",
+                tooltip="OV must be in the same location as VF",
+                label="Original Version DCP",
+                width="600px",
+            )
+        ]
+
     last_check = []
     if len(jobs) > 0:
         last_check = check_report_items(jobs[0].result)
@@ -235,17 +261,21 @@ def add_dcp_check_card(q: Q, dcp):
         ui.form_card(
             box=ui.box("content", size=0),
             items=[
-                ui.inline(justify="between",
-                    items= job_items
+                ui.inline(
+                    justify="between",
+                    items=job_items
                     + [
                         ui.button(
                             name="dcp_check_action", label="Check", value=str(dcp.id)
                         ),
-                    ] + check_options
+                    ]
+                    + check_options,
                 ),
-            ] + last_check,
+            ]
+            + last_check,
         ),
     )
+
 
 def dcp_infos_card(q, dcp):
     q.page.add(

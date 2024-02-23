@@ -22,6 +22,7 @@ def serve():
 def app():
     start_app()
 
+
 @main.command()
 @click.argument("path")
 @click.option("--host", help="Host Address (Default to 0.0.0.0)", default="0.0.0.0")
@@ -32,14 +33,15 @@ def agent(path, host, port, debug):
     print("starting agent... ctrl-c to quit.")
     start_agent(host, port, debug)
 
+
 @main.command()
 @click.option("--deldb", help="delete the DB prior to launch the app", is_flag=True)
 def dev(deldb):
     if deldb:
         db_path = Path.home() / ".movx" / "movx.db"
         db_path.unlink()
-    #os.environ["H2O_WAVE_EDITABLE"] = "1"
-    #os.environ["H2O_WAVE_DEBUG"] = "1"
+    # os.environ["H2O_WAVE_EDITABLE"] = "1"
+    # os.environ["H2O_WAVE_DEBUG"] = "1"
     os.environ["MOVX_AGENT_ROOT_PATH"] = "."
 
     start_agent("127.0.0.1", 11011, True, True)
@@ -49,8 +51,8 @@ def dev(deldb):
 @main.command()
 @click.argument("file")
 def scan(file):
-    
     from movx.core import locations
+
     locations.scan_all()
     # movx.scan()
     # movx.pretty_print()
@@ -61,6 +63,7 @@ def scan(file):
 @click.option("--name")
 def add(path, name="noname"):
     from movx.core import locations
+
     path = Path(path)
     locations.add(str(path.absolute()), name=name)
 
@@ -68,8 +71,8 @@ def add(path, name="noname"):
 @main.command()
 @click.argument("path")
 def check(path):
-    
     from movx.core import dcps
+
     if path == "all":
         dcps.check_all(print_tasks_cli)
     else:
@@ -79,8 +82,8 @@ def check(path):
 @main.command()
 @click.argument("path", default="all")
 def parse(path):
-    
     from movx.core import dcps
+
     if path == "all":
         dcps.parse_all()
     else:
@@ -89,12 +92,12 @@ def parse(path):
 
 @main.command()
 def clear():
-    pass #db.clear()
+    pass  # db.clear()
 
 
 @main.command()
 def cancel():
-    pass #jobs.cancel()
+    pass  # jobs.cancel()
 
 
 def print_tasks_cli(tasks):
