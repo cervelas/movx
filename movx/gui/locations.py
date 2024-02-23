@@ -39,7 +39,7 @@ async def locations(q: Q):
 
 
 @on()
-async def add_location(q: Q, parse=True):
+async def add_location(q: Q):
     copy_expando(q.args, q.client)
 
     try:
@@ -54,9 +54,8 @@ async def add_location(q: Q, parse=True):
         notif(q, "Scan for dcps in %s ..." % loc.name)
         await q.page.save()
         _dcps = scan4dcps(loc)
-        if parse:
-            for dcp in _dcps:
-                dcps.parse(dcp)
+        for dcp in _dcps:
+            dcps.parse(dcp)
         q.client.adding_location = False
 
         notif(q, "%s dcps found in location %s" % (len(_dcps), loc.name))
@@ -144,6 +143,8 @@ async def scan_location(q):
     if loc:
         notif(q, "Scan location %s for dcp's..." % loc.name)
         _dcps = scan4dcps(loc)
+        for dcp in _dcps:
+            dcps.parse(dcp)
         notif(q, "%s dcps found in location %s" % (len(_dcps), loc.name))
 
 

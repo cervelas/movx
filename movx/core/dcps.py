@@ -185,7 +185,7 @@ def parse(dcp):
 
     job.add()
 
-    # make_transient(dcp)
+    make_transient(dcp)
 
     ttask = jobs.JobTask(job, parse_job, dcp=dcp, probe=False)
 
