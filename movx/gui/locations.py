@@ -1,5 +1,6 @@
 import traceback
 from pathlib import Path
+import time
 
 from h2o_wave import Q, ui, on, copy_expando
 
@@ -56,6 +57,7 @@ async def add_location(q: Q):
         _dcps = scan4dcps(loc)
         for dcp in _dcps:
             dcps.parse(dcp)
+            time.sleep(0.5)
         q.client.adding_location = False
 
         notif(q, "%s dcps found in location %s" % (len(_dcps), loc.name))
@@ -142,10 +144,15 @@ async def scan_location(q):
 
     if loc:
         notif(q, "Scan location %s for dcp's..." % loc.name)
+        await q.page.save()
         _dcps = scan4dcps(loc)
+        notif(q, "Parsing locations")
+        await q.page.save()
         for dcp in _dcps:
             dcps.parse(dcp)
+            time.sleep(0.5)
         notif(q, "%s dcps found in location %s" % (len(_dcps), loc.name))
+        await q.page.save()
 
 
 @on()
