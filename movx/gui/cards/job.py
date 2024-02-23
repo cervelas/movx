@@ -512,15 +512,15 @@ def checks_full_table(checks):
 
         rows.append(
             ui.table_row(
-                name=check.get("name", ""),
+                name=str(check.get("name", "")),
                 cells=[
-                    check.get("pretty_name", "unknown"),
+                    str(check.get("pretty_name", "unknown")),
                     result,
                     message,
                     " > ".join(check.get("asset_stack", [])),
-                    check.get("doc", ""),
+                    str(check.get("doc", "")),
                     str(round(check.get("seconds_elapsed", 0))),
-                    check.get("name", ""),
+                    str(check.get("name", "")),
                 ],
             )
         )
