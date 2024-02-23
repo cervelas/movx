@@ -318,9 +318,6 @@ def update_dcp_infos(dcp, report):
     else:
         update_movie(dcp, dcp.title.split("_")[0])
 
-    with dcp.fresh() as _dcp:
-        print(_dcp)
-
 
 def human_check_job(job, dcp):
     """

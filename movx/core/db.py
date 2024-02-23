@@ -61,28 +61,25 @@ class Base(MappedAsDataclass, DeclarativeBase):
         """
         Add this object to the DB
         """
-        with Session() as session:
-            session.add(self)
-            session.commit()
+        Session.add(self)
+        Session.commit()
         return self
 
     def delete(self):
         """
         Delete this object from the DB
         """
-        with Session() as session:
-            session.execute(delete(self.__class__).where(self.__class__.id == self.id))
-            session.commit()
+        Session.execute(delete(self.__class__).where(self.__class__.id == self.id))
+        Session.commit()
 
     def update(self, **args):
         """
         update this object values according to the paremeters passed to this function
         """
-        with Session() as session:
-            session.execute(
-                self.__table__.update().where(self.__class__.id == self.id).values(args)
-            )
-            session.commit()
+        Session.execute(
+            self.__table__.update().where(self.__class__.id == self.id).values(args)
+        )
+        Session.commit()
         return self
 
     @classmethod
@@ -96,14 +93,13 @@ class Base(MappedAsDataclass, DeclarativeBase):
         OR get a particular object if the id parameter is provided
         """
         ret = None
-        with Session() as session:
-            if inspect.isclass(self):
-                if id:
-                    ret = session.get(self, id)
-                else:
-                    ret = session.scalars(select(self)).all()
+        if inspect.isclass(self):
+            if id:
+                ret = Session.get(self, id)
             else:
-                ret = session.get(self.__class__, self.id)
+                ret = Session.scalars(select(self)).all()
+        else:
+            ret = Session.get(self.__class__, self.id)
         return ret
 
     @classmethod
@@ -112,10 +108,9 @@ class Base(MappedAsDataclass, DeclarativeBase):
         get all objects of this same class from the DB
         """
         ret = []
-        with Session() as session:
-            ret = session.scalars(
-                select(cls), execution_options={"prebuffer_rows": True}
-            ).all()
+        ret = Session.scalars(
+            select(cls), execution_options={"prebuffer_rows": True}
+        ).all()
         return ret
 
     @classmethod
@@ -123,9 +118,8 @@ class Base(MappedAsDataclass, DeclarativeBase):
         """
         Clear this object table (delete all the rows)
         """
-        with Session() as session:
-            session.query(cls).delete()
-            session.commit()
+        Session.query(cls).delete()
+        Session.commit()
 
     @classmethod
     def filter(cls, expr):
@@ -133,10 +127,9 @@ class Base(MappedAsDataclass, DeclarativeBase):
         Filter query on this object class
         """
         ret = []
-        with Session() as session:
-            ret = session.scalars(
-                select(cls).filter(expr), execution_options={"prebuffer_rows": True}
-            )
+        ret = Session.scalars(
+            select(cls).filter(expr), execution_options={"prebuffer_rows": True}
+        )
         return ret
 
     @contextmanager
@@ -144,10 +137,9 @@ class Base(MappedAsDataclass, DeclarativeBase):
         """
         Context manager that get a fresh version of this very object, yield, and commit it.
         """
-        with Session() as session:
-            t = session.query(self.__class__).get(self.id)
-            yield t
-            session.commit()
+        t = Session.query(self.__class__).get(self.id)
+        yield t
+        Session.commit()
 
 
 class User(Base):
@@ -427,14 +419,20 @@ print("Configuring Database...", end="")
 configure_mappers()
 
 engine = create_engine(db_url)
-Session = sessionmaker(bind=engine, expire_on_commit=False)
-# Scoped_Session = scoped_session(session_factory)
+#Session = sessionmaker(bind=engine, expire_on_commit=False)
+Session = scoped_session(
+    sessionmaker(
+        autoflush=True,
+        autocommit=False,
+        expire_on_commit=False,
+        bind=engine
+    )
+)
+
 
 Base.metadata.create_all(engine)
 
 anonymous = User("anonymous", avatar="anonymous")
-
-print("OK")
 
 
 def reset_db():
