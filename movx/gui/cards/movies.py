@@ -1,7 +1,7 @@
 from h2o_wave import ui, on
 
 from movx.core.db import Tags
-from movx.gui import make_md_table
+from movx.gui import convert_size, make_md_table
 
 
 def all_movies_table(movies):
@@ -113,7 +113,7 @@ def dcps_table(dcps):
             [
                 "[%s](#dcp/%s)" % (dcp.title, dcp.id),
                 loc_lnk,
-                dcp.size,
+                convert_size(dcp.size, exact=False),
                 "".join(tags),
                 "",
                 "",

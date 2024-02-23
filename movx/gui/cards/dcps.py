@@ -1,5 +1,6 @@
 from h2o_wave import ui
 from movx.core.db import Tags
+from movx.gui import convert_size
 
 
 def dcps_table(dcps):
@@ -97,7 +98,7 @@ def gen_dcps_rows(dcps):
             mov_lnk,
             loc_lnk,
             str(dcp.package_type),
-            str(dcp.size),
+            convert_size(dcp.size, exact=False),
             ",".join([t.name for t in dcp.tags]),
             # str(dcp.kind),
         ]

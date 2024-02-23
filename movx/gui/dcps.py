@@ -66,20 +66,22 @@ async def overview_items(q: Q):
 
     colors = [
         "$red",
-        "$pink",
+        "$cyan",
         "$purple",
-        "$tangerine",			
+        "$amber",			
         "$teal",			
         "$violet",			
         "$yellow",
         "$page",
     ]
 
+    for dcp in list(DCP.get_all()):
+        total_size += dcp.size
+
     for i, loc in enumerate(list(Location.get_all())):
         loc_size = 0
         for d in list(loc.dcps()):
             loc_size += d.size
-            total_size += d.size
         if loc_size > 0:
             fraction = loc_size / total_size
         else:
