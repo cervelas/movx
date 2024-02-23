@@ -58,7 +58,7 @@ class JobTask(threading.Thread):
             # JobTask.start_poll()
 
             while not self.is_cancelled.wait(timeout=1):
-                if self.job.finished.wait(timeout=0.1):
+                if self.job.finished.wait(timeout=1):
                     with self.job.fresh() as j:
                         j.update(
                             status=db.JobStatus.finished,
