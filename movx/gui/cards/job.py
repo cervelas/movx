@@ -584,7 +584,7 @@ def add_check_cards(q, report):
                 ui.expander(
                     name="expander",
                     label="Full Checks Reference",
-                    items=[checks_full_table(report.get("checks"))],
+                    items=[checks_full_table(report.get("checks", []))],
                 ),
             ],
         ),
