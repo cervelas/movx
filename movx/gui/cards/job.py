@@ -504,6 +504,7 @@ def checks_full_table(checks):
     rows = []
 
     for check in checks:
+        print(check)
         result = "bypass" if check["bypass"] else "pass"
         message = ""
         if len(check.get("errors")) > 0:
