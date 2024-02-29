@@ -35,6 +35,7 @@ class JobType(enum.Enum):
     check = 3
     copy = 4
     mockup = 99
+    none = None
 
 
 class JobStatus(enum.Enum):
@@ -44,6 +45,8 @@ class JobStatus(enum.Enum):
     running = 3
     finished = 4
     cancelled = 5
+    unknown = 666
+    none = None
 
 @dataclass
 class AgentJob:
