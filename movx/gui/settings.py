@@ -130,13 +130,19 @@ async def create_profile(q):
 
 @on()
 async def update_profile(q):
+
+    def split(txt):
+        if txt and len(txt) > 0:
+            return [ str(l).strip() for l in txt.split("\n") ]
+        return []
+
     file = q.args.edited_profile
 
     crit = {}
 
-    crit.update({n: "WARNING" for n in q.args.warnings_tests.split("\n")})
+    crit.update({n: "WARNING" for n in split(q.args.warnings_tests)})
 
-    crit.update({n: "ERROR" for n in q.args.errors_tests.split("\n")})
+    crit.update({n: "ERROR" for n in split(q.args.errors_tests)})
 
     if crit.get("default") is None:
         crit.update({"default": "ERROR"})
@@ -144,13 +150,9 @@ async def update_profile(q):
 
     profile = {
         "criticality": crit,
-        "bypass": [],
-        "foreign_files": [],
+        "bypass": split(q.args.bypass_tests),
+        "foreign_files": split(q.args.foreign_files),
     }
-
-    profile["bypass"] = q.args.bypass_tests.split("\n")
-
-    profile["foreign_files"] = q.args.foreign_files.split("\n")
 
     with open(q.args.edited_profile, "w") as fp:
         json.dump(profile, fp)

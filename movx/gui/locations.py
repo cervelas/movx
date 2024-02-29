@@ -1,3 +1,4 @@
+import threading
 import traceback
 from pathlib import Path
 import time
@@ -12,7 +13,7 @@ from movx.core.locations import (
     get_root_path,
     scan_local,
     scan_agent,
-    scan4dcps,
+    scan_add_dcps,
 )
 from movx.gui.cards.locations import (
     location_del_dialog,
@@ -134,18 +135,18 @@ async def prescan_location(q):
 
 
 @on()
-async def scan_location(q):
+async def scan_location(q: Q):
     loc = Location.get(q.args.scan_location)
 
     if loc:
         notif(q, "Scan location %s for dcp's..." % loc.name)
         await q.page.save()
-        _dcps = scan4dcps(loc)
+        _dcps = await q.run(scan_add_dcps, loc)
         notif(q, "Parsing locations")
         await q.page.save()
         for dcp in _dcps:
-            dcps.parse(dcp)
-            time.sleep(0.5)
+            with dcp.fresh() as _dcp:
+                dcps.parse(_dcp)
         notif(q, "%s dcps found in location %s" % (len(_dcps), loc.name))
         await q.page.save()
 

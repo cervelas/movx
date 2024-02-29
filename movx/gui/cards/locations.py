@@ -6,9 +6,9 @@ from h2o_wave import copy_expando, on, ui
 
 
 def locations_list_card(locations):
-    locations_commands = [
+    commands = [
         ui.command(
-            name="scan_location", label="Scan dcps", icon="SearchData", value="hide"
+            name="scan_location", label="Fetch dcps", icon="SearchData", value="hide"
         ),
         ui.command(name="delete_location", label="Delete", icon="delete", value="show"),
         ui.command(
@@ -50,7 +50,7 @@ def locations_list_card(locations):
                         label="",
                         max_width="25px",
                         cell_type=ui.menu_table_cell_type(
-                            name="commands", commands=locations_commands
+                            name="commands", commands=commands
                         ),
                     ),
                     ui.table_column(

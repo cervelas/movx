@@ -8,9 +8,9 @@ from movx.core.db import DCP, Location
 ffmpeg -ss 00:04:01 -i .\Persona_FTR-1_F-177_XX-EN_20_2K_SEED_20220531_JIN_IOP_OV\Persona_FTR-1_F-177_XX-EN_20_2K_SEED_20220531_JIN_IOP_OV_b44dc5eb-52ad-44_j2c.mxf -frames:v 1 -y  output.png
 """
 
-@on("all_dcp_list")
+@on("dcp_list")
 async def on_row_clicked(q: Q):
-   q.page["meta"] = ui.meta_card(box="", redirect="#dcp/" + q.args.all_dcp_list[0])
+   q.page["meta"] = ui.meta_card(box="", redirect="#dcp/" + q.args.dcp_list[0])
    await q.page.save()
 
 # @on()

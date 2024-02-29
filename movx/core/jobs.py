@@ -7,6 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm.session import make_transient
 
 from movx.core import db
+import movx.core.agent
+from movx.core.agent import JobType
+from movx.core.agent import JobStatus
 
 
 class JobTask(threading.Thread):
@@ -50,7 +53,7 @@ class JobTask(threading.Thread):
         try:
             with self.job.fresh() as j:
                 j.update(
-                    status=db.JobStatus.started,
+                    status=movx.core.agent.JobStatus.started,
                     started_at=time.time(),
                 )
 
@@ -61,7 +64,7 @@ class JobTask(threading.Thread):
                 if self.job.finished.wait(timeout=0.5):
                     with self.job.fresh() as j:
                         j.update(
-                            status=db.JobStatus.finished,
+                            status=movx.core.agent.JobStatus.finished,
                             progress=1,
                             result=result or {},
                             finished_at=time.time(),
@@ -71,7 +74,7 @@ class JobTask(threading.Thread):
             if self.is_cancelled.is_set():
                 with self.job.fresh() as j:
                     j.update(
-                        status=db.JobStatus.cancelled,
+                        status=movx.core.agent.JobStatus.cancelled,
                         finished_at=time.time(),
                     )
 
@@ -80,24 +83,10 @@ class JobTask(threading.Thread):
             print(e)
             print(traceback.format_exc())
             self.job.update(
-                status=db.JobStatus.errored,
+                status=movx.core.agent.JobStatus.errored,
                 result={"exception": str(e), "traceback": traceback.format_exc()},
                 finished_at=time.time(),
             )
-
-    @classmethod
-    def __poll_tasks(self):
-        while JobTask.prob_enable.wait(timeout=JobTask.poll_interval_s):
-            jobs = db.Job.get_all()
-            for job in jobs:
-                if job.eta > 0:
-                    prog = round(job.progress, 2)
-                    if prog >= 1:
-                        eta = 0
-                    elif prog > 0:
-                        eta = (1 - prog) / ((prog) / job.timestamp) + 1
-                    # job.update(eta=eta, timestamp=time.time())
-
 
 def ongoing():
     time.sleep(0.1)
@@ -117,3 +106,39 @@ def print_cli_tasks_prog(tasks):
     for t in tasks:
         p += "%s %0.f%% (eta: %0.fs)\r\n" % (t.name, t.progress * 100, t.eta)
     print(p, end="")
+
+
+def mockup_job(job, duration=60):
+    """
+    Check a DCP
+    """
+
+    def job_cb(progress):
+        print("cb", progress)
+        with job.fresh() as _job:
+            _job.update(progress=progress)
+
+    for i in range(0, duration):
+        time.sleep(0.5)
+        job_cb(i / duration)
+
+    job.finished.set()
+
+    return { "status": "finished" }
+
+
+def mock(dcp):
+    """
+    Create and run a Mocking job
+    """
+    
+    job = db.Job(type=movx.core.agent.JobType.mockup, dcp=dcp, author=db.User.get(1))
+
+    job.add()
+
+    ttask = JobTask(job, mockup_job)
+
+    ttask.start()
+
+    # tasks.exec(_parse_task, task, wait_task=blocking, dcp = dcp, probe = probe)
+    return job.id

@@ -4,7 +4,8 @@ import yaml
 from datetime import datetime, timedelta
 
 from h2o_wave import ui
-from movx.core.db import JobType, JobStatus
+from movx.core.agent import JobStatus
+from movx.core.agent import JobType
 from movx.gui import full_table, convert_size, md_table, flat, make_md_table
 
 
@@ -20,31 +21,42 @@ def job_cards(q, job):
 
 
 def job_progress(job):
-    items = []
+    time_items = []
     if job.started_at > 0:
         st = datetime.fromtimestamp(job.started_at)
 
-        items = [ui.text_s("Started @ %s" % st.strftime("%m/%d/%Y %H:%M:%S"))]
+        time_items = [ui.text_s("Started @ %s" % st.strftime("%m/%d/%Y %H:%M:%S"))]
 
     if job.finished_at > 0:
         ft = datetime.fromtimestamp(job.finished_at)
-        items += [ui.text_s("Finished @ %s" % ft.strftime("%m/%d/%Y %H:%M:%S"))]
+        time_items += [ui.text_s("Finished @ %s" % ft.strftime("%m/%d/%Y %H:%M:%S"))]
     elif job.progress > 0:
-        items += [ui.text_s("Time remaining %s" % timedelta(seconds=round(job.eta())))]
+        time_items += [ui.text_s("Time remaining %s" % timedelta(seconds=round(job.eta())))]
 
-    items += [ui.text_s("Elapsed %s" % timedelta(seconds=job.duration()))]
+    time_items += [ui.text_s("Elapsed %s" % timedelta(seconds=job.duration()))]
 
-    return [
-        ui.inline(
+    
+    items = [ ui.inline(
             justify="between",
-            items=items,
-        ),
-        ui.progress(
-            label="Status %s" % job.status,
-            caption="Progress %s%%" % round(job.progress * 100),
-            value=job.progress,
-        ),
+            items=time_items,
+        )
     ]
+
+    if job.progress < 1:
+        caption = "Progress Undefined"
+
+        if job.progress > -1:
+            caption = "Progress %s%%" % round(job.progress * 100) 
+        
+        items += [
+            ui.progress(
+                label="Status %s" % job.status.name,
+                caption=caption,
+                value=job.progress if job.progress > -1 else None,
+            )
+        ]
+        
+    return items
 
 
 def add_human_check_cards():
@@ -55,6 +67,7 @@ def add_human_check_cards():
 
 
 def add_parse_cards(q, parse_report):
+    add_reels_probe_cards(q, parse_report)
     add_am_cards(q, parse_report)
     add_pkl_cards(q, parse_report)
     add_cpl_cards(q, parse_report)
@@ -236,48 +249,349 @@ def video_asset_details(asset):
             ),
         ]
 
-    items += [
-        ui.expander(
-            name="raw_probe_result_txt_exp",
-            label="Raw Probe Results",
+        items += [
+            ui.expander(
+                name="raw_probe_result_txt_exp_picture",
+                label="Raw Probe Results",
+                items=[
+                    ui.markup(
+                        name="raw_probe_result_txt_picture",
+                        content="<pre>%s</pre>" % yaml.dump(probe, indent=2),
+                    ),
+                ],
+            )
+        ]
+
+    return items
+
+
+def audio_asset_details(asset):
+    items = [
+        ui.stats(
+            justify="between",
+            inset=True,
             items=[
-                ui.markup(
-                    name="raw_probe_result_txt",
-                    content="<pre>%s</pre>" % yaml.dump(probe, indent=2),
+                ui.stat(
+                    label="Asset",
+                    value=asset.get("EssenceType"),
+                    icon="volume2",
+                ),
+                ui.stat(
+                    label="Entry Point",
+                    value="%s" % asset.get("TimeCodeIn"),
+                    # icon="ScreenTime",
+                    caption="%s (CPL %s) Frames"
+                    % (asset.get("EntryPoint"), asset.get("CPLEntryPoint")),
+                ),
+                ui.stat(
+                    label="Out Point",
+                    value="%s" % asset.get("TimeCodeOut"),
+                    # icon="ImageCrosshair",
+                    caption="%s (CPL %s) Frames"
+                    % (asset.get("CPLOutPoint"), asset.get("CPLOutPoint")),
+                ),
+                ui.stat(
+                    label="Duration",
+                    value="%s" % asset.get("TimeCodeDuration"),
+                    # icon="ImageCrosshair",
+                    caption="%s (Intr. %s) Frames"
+                    % (asset.get("Duration"), asset.get("IntrinsicDuration")),
+                ),
+                ui.stat(
+                    label="Framerate",
+                    value="%s FPS" % asset.get("FrameRate"),
+                    # icon="ImageCrosshair",
+                    caption="Edite Rate %s FPS" % asset.get("EditRate"),
                 ),
             ],
         )
     ]
+    probe = asset.get("Probe")
+    if probe:
+        items += [
+            ui.text_l("Probe Summary"),
+            ui.stats(
+                justify="between",
+                items=[
+                    ui.stat(
+                        label="Type",
+                        value="%s" % probe.get("LabelSetType"),
+                        # icon="ImageCrosshair",
+                        # caption="Company %s" % probe.get("CompanyName"),
+                    ),
+                    ui.stat(
+                        label="Aspect Ratio",
+                        value="%s" % probe.get("AspectRatio"),
+                        # icon="ImageCrosshair",
+                        # caption="Aspect Ratio %s" % probe.get("ScreenAspectRatio"),
+                    ),
+                    ui.stat(
+                        label="Average BitRate",
+                        value="%s Mb/s" % probe.get("AverageBitRate"),
+                        # icon="ScreenTime",
+                        caption="Max. %s Mb/s" % probe.get("MaxBitRate"),
+                    ),
+                    ui.stat(
+                        label="Encoder",
+                        value="%s" % probe.get("ProductName"),
+                        # icon="ImageCrosshair",
+                        caption="%s" % (probe.get("ProductVersion")),
+                    ),
+                    ui.stat(
+                        label="Resolution",
+                        value="%s" % probe.get("Resolution"),
+                        # icon="ImageCrosshair",
+                        # caption="%s" % (probe.get("ProductVersion")),
+                    ),
+                    ui.stat(
+                        label="Container Duration",
+                        value="%s Frames" % probe.get("ContainerDuration"),
+                        # icon="ImageCrosshair",
+                        # caption="%s (Intr. %s) Frames" % (probe.get("Duration"), probe.get("IntrinsicDuration")),
+                    ),
+                    ui.stat(
+                        label="Edite Rate",
+                        value="%s FPS" % probe.get("EditRate"),
+                        # icon="ImageCrosshair",
+                        caption="Sample Rate %s FPS" % probe.get("SampleRate"),
+                    ),
+                ],
+            ),
+        ]
+
+        items += [
+            ui.expander(
+                name="raw_probe_result_txt_exp_audio",
+                label="Raw Probe Results",
+                items=[
+                    ui.markup(
+                        name="raw_probe_result_txt_audio",
+                        content="<pre>%s</pre>" % yaml.dump(probe, indent=2),
+                    ),
+                ],
+            )
+        ]
 
     return items
 
-    # ui.expander(
-    #    name="expander%s" % asset["Id"],
-    #    label="Raw Data",
-    #    items=[ui.text(md_table(flat(asset)))],
-    # )
 
-    """
-    ui.stat(
-                label="Entry Point",
-                value=asset.get("EntryPoint"),
-                #icon="ScreenTime",
-                caption="13794 Frames",
+def caption_asset_details(asset):
+    items = [
+        ui.stats(
+            justify="between",
+            inset=True,
+            items=[
+                ui.stat(
+                    label="Asset",
+                    value=asset.get("EssenceType"),
+                    icon="ClosedCaption",
+                ),
+                ui.stat(
+                    label="Entry Point",
+                    value="%s" % asset.get("TimeCodeIn"),
+                    # icon="ScreenTime",
+                    caption="%s (CPL %s) Frames"
+                    % (asset.get("EntryPoint"), asset.get("CPLEntryPoint")),
+                ),
+                ui.stat(
+                    label="Out Point",
+                    value="%s" % asset.get("TimeCodeOut"),
+                    # icon="ImageCrosshair",
+                    caption="%s (CPL %s) Frames"
+                    % (asset.get("CPLOutPoint"), asset.get("CPLOutPoint")),
+                ),
+                ui.stat(
+                    label="Duration",
+                    value="%s" % asset.get("TimeCodeDuration"),
+                    # icon="ImageCrosshair",
+                    caption="%s (Intr. %s) Frames"
+                    % (asset.get("Duration"), asset.get("IntrinsicDuration")),
+                ),
+                ui.stat(
+                    label="Framerate",
+                    value="%s FPS" % asset.get("FrameRate"),
+                    # icon="ImageCrosshair",
+                    caption="Edite Rate %s FPS" % asset.get("EditRate"),
+                ),
+            ],
+        )
+    ]
+    probe = asset.get("Probe")
+    if probe:
+        items += [
+            ui.text_l("Probe Summary"),
+            ui.stats(
+                justify="between",
+                items=[
+                    ui.stat(
+                        label="Type",
+                        value="%s" % probe.get("LabelSetType"),
+                        # icon="ImageCrosshair",
+                        # caption="Company %s" % probe.get("CompanyName"),
+                    ),
+                    ui.stat(
+                        label="Aspect Ratio",
+                        value="%s" % probe.get("AspectRatio"),
+                        # icon="ImageCrosshair",
+                        # caption="Aspect Ratio %s" % probe.get("ScreenAspectRatio"),
+                    ),
+                    ui.stat(
+                        label="Average BitRate",
+                        value="%s Mb/s" % probe.get("AverageBitRate"),
+                        # icon="ScreenTime",
+                        caption="Max. %s Mb/s" % probe.get("MaxBitRate"),
+                    ),
+                    ui.stat(
+                        label="Encoder",
+                        value="%s" % probe.get("ProductName"),
+                        # icon="ImageCrosshair",
+                        caption="%s" % (probe.get("ProductVersion")),
+                    ),
+                    ui.stat(
+                        label="Resolution",
+                        value="%s" % probe.get("Resolution"),
+                        # icon="ImageCrosshair",
+                        # caption="%s" % (probe.get("ProductVersion")),
+                    ),
+                    ui.stat(
+                        label="Container Duration",
+                        value="%s Frames" % probe.get("ContainerDuration"),
+                        # icon="ImageCrosshair",
+                        # caption="%s (Intr. %s) Frames" % (probe.get("Duration"), probe.get("IntrinsicDuration")),
+                    ),
+                    ui.stat(
+                        label="Edite Rate",
+                        value="%s FPS" % probe.get("EditRate"),
+                        # icon="ImageCrosshair",
+                        caption="Sample Rate %s FPS" % probe.get("SampleRate"),
+                    ),
+                ],
             ),
-            ui.stat(
-                label="Out",
-                value="1920x1080@24",
-                #icon="ImageCrosshair",
-                caption="Ration 1.85",
-            ),
-            ui.stat(
-                label="Size",
-                value="50.3 GB",
-                icon="StorageOptical",
-                caption="12391B",
-            ),
-    """
+        ]
 
+        items += [
+            ui.expander(
+                name="raw_probe_result_txt_exp_audio",
+                label="Raw Probe Results",
+                items=[
+                    ui.markup(
+                        name="raw_probe_result_txt_audio",
+                        content="<pre>%s</pre>" % yaml.dump(probe, indent=2),
+                    ),
+                ],
+            )
+        ]
+
+    return items
+
+def metadata_asset_details(asset):
+    items = [
+        ui.stats(
+            justify="between",
+            inset=True,
+            items=[
+                ui.stat(
+                    label="Asset",
+                    value=asset.get("EssenceType"),
+                    icon="AssessmentGroup",
+                ),
+                ui.stat(
+                    label="Entry Point",
+                    value="%s" % asset.get("TimeCodeIn"),
+                    # icon="ScreenTime",
+                    caption="%s (CPL %s) Frames"
+                    % (asset.get("EntryPoint"), asset.get("CPLEntryPoint")),
+                ),
+                ui.stat(
+                    label="Out Point",
+                    value="%s" % asset.get("TimeCodeOut"),
+                    # icon="ImageCrosshair",
+                    caption="%s (CPL %s) Frames"
+                    % (asset.get("CPLOutPoint"), asset.get("CPLOutPoint")),
+                ),
+                ui.stat(
+                    label="Duration",
+                    value="%s" % asset.get("TimeCodeDuration"),
+                    # icon="ImageCrosshair",
+                    caption="%s (Intr. %s) Frames"
+                    % (asset.get("Duration"), asset.get("IntrinsicDuration")),
+                ),
+                ui.stat(
+                    label="Framerate",
+                    value="%s FPS" % asset.get("FrameRate"),
+                    # icon="ImageCrosshair",
+                    caption="Edite Rate %s FPS" % asset.get("EditRate"),
+                ),
+            ],
+        )
+    ]
+    probe = asset.get("Probe")
+    if probe:
+        items += [
+            ui.text_l("Probe Summary"),
+            ui.stats(
+                justify="between",
+                items=[
+                    ui.stat(
+                        label="Type",
+                        value="%s" % probe.get("LabelSetType"),
+                        # icon="ImageCrosshair",
+                        # caption="Company %s" % probe.get("CompanyName"),
+                    ),
+                    ui.stat(
+                        label="Aspect Ratio",
+                        value="%s" % probe.get("AspectRatio"),
+                        # icon="ImageCrosshair",
+                        # caption="Aspect Ratio %s" % probe.get("ScreenAspectRatio"),
+                    ),
+                    ui.stat(
+                        label="Average BitRate",
+                        value="%s Mb/s" % probe.get("AverageBitRate"),
+                        # icon="ScreenTime",
+                        caption="Max. %s Mb/s" % probe.get("MaxBitRate"),
+                    ),
+                    ui.stat(
+                        label="Encoder",
+                        value="%s" % probe.get("ProductName"),
+                        # icon="ImageCrosshair",
+                        caption="%s" % (probe.get("ProductVersion")),
+                    ),
+                    ui.stat(
+                        label="Resolution",
+                        value="%s" % probe.get("Resolution"),
+                        # icon="ImageCrosshair",
+                        # caption="%s" % (probe.get("ProductVersion")),
+                    ),
+                    ui.stat(
+                        label="Container Duration",
+                        value="%s Frames" % probe.get("ContainerDuration"),
+                        # icon="ImageCrosshair",
+                        # caption="%s (Intr. %s) Frames" % (probe.get("Duration"), probe.get("IntrinsicDuration")),
+                    ),
+                    ui.stat(
+                        label="Edite Rate",
+                        value="%s FPS" % probe.get("EditRate"),
+                        # icon="ImageCrosshair",
+                        caption="Sample Rate %s FPS" % probe.get("SampleRate"),
+                    ),
+                ],
+            ),
+        ]
+
+        items += [
+            ui.expander(
+                name="raw_probe_result_txt_exp_audio",
+                label="Raw Probe Results",
+                items=[
+                    ui.markup(
+                        name="raw_probe_result_txt_audio",
+                        content="<pre>%s</pre>" % yaml.dump(probe, indent=2),
+                    ),
+                ],
+            )
+        ]
+
+    return items
 
 def add_reels_probe_cards(q, parse_report):
     for cpl in parse_report.get("cpl_list", []):
@@ -288,14 +602,22 @@ def add_reels_probe_cards(q, parse_report):
             for asset_type, asset in reellist["Assets"].items():
                 if asset_type == "Picture":
                     items += video_asset_details(asset)
+                if asset_type == "Sound":
+                    items += audio_asset_details(asset)
+                if asset_type == "Metadata":
+                    items += metadata_asset_details(asset)
+                if asset_type == "Subtitle":
+                    items += caption_asset_details(asset)
             q.page.add(
                 "cpl_reel_probe_%s" % reellist["Id"],
                 ui.form_card(
                     box=ui.box("content", size=0),
                     items=[
-                        ui.text_xl("CPL Reel Probe List %s" % reellist["Position"]),
-                        ui.text_s("%s" % (reellist["Id"])),
-                        ui.text_s("%s" % (reellist["AnnotationText"])),
+                        ui.inline( [
+                            ui.text_xl("CPL Reel Probe List %s" % reellist["Position"]),
+                            ui.text_s("%s" % (reellist["AnnotationText"])),
+                            ui.text_xs("%s" % (reellist["Id"])),
+                        ])
                     ]
                     + items,
                 ),

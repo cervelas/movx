@@ -105,6 +105,9 @@ async def update_theme(q: Q):
 
     await q.page.save()
 
+@on()
+async def ask_for_login(q: Q):
+    pass
 
 async def show_error(q: Q, error: str):
     """

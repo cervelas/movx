@@ -1,0 +1,18 @@
+[Unit]
+Description=MovX Service
+
+Wants=network.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/dormeur/.local/bin
+ExecStart=/home/dormeur/.local/bin/movx serve
+User=dormeur
+SyslogIdentifier=movx
+Restart=on-failure
+RestartSec=10
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

@@ -13,6 +13,9 @@ from pathtub import ensure
 import uvicorn
 
 from movx.core import is_linux, is_win
+import importlib.metadata
+
+version = importlib.metadata.version("movx")
 
 current_path = Path(__file__).parent
 

@@ -1,3 +1,4 @@
+import threading
 import time
 from pathlib import Path
 import socket
@@ -90,7 +91,7 @@ def __scan(location):
         raise Exception("Cannot Scan Location %s: Type Unknown" % location.name)
 
 
-def scan4dcps(location):
+def scan_add_dcps(location):
     paths = __scan(location)
     dcps = list(DCP.filter(DCP.location.has(id=location.id)).all())
 
@@ -105,18 +106,18 @@ def scan4dcps(location):
         else:
             dcp.delete()
 
-    for path in paths:
-        dcp = DCP(location=location, path=str(path.resolve()), title=Path(path).name)
-        dcp.add()
-        dcps.append(dcp)
+    with location.fresh() as _loc:
+        for path in paths:
+            dcp = DCP(location=_loc, path=str(path.resolve()), title=Path(path).name)
+            dcp.add()
+            dcps.append(dcp)
 
     return dcps
-
 
 def scan_all():
     """
     Scan every locations for folders with ASSETMAP recursively
     """
     for location in Location.get():
-        scan4dcps(location)
+        scan_add_dcps(location)
 

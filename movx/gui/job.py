@@ -1,7 +1,8 @@
 from h2o_wave import Q, ui, on
+from movx.core.agent import JobStatus
 from movx.gui import setup_page
 from movx.gui.cards.job import job_progress, job_cards, add_raw_result_card
-from movx.core.db import Job, JobStatus
+from movx.core.db import Job
 
 
 async def poll_job(q: Q, job: Job):
@@ -9,21 +10,60 @@ async def poll_job(q: Q, job: Job):
 
     if job is None:
         return
+    
+    last_job_status = None
 
     while True:
         await q.sleep(1)
 
-        _job = Job.get(job.id)
+        _job = job.get(job.id)
 
         if _job:
+            q.page["job_detail_%s" % job.id].items = job_header_items(_job)
             q.page["job_progress_%s" % job.id].items = job_progress(_job)
-            if _job.status != JobStatus.started:
+            await q.page.save()
+            if _job.status in [ JobStatus.finished or JobStatus.errored ]:
+                if last_job_status == JobStatus.started:
+                    q.page["meta"].redirect = "#job/%s" % job.id
                 break
+            else:
+                last_job_status = _job.status
         else:
             break
 
-        await q.page.save()
+def job_header_items(job):
 
+    header = [
+            ui.text_xl(
+                "%s %s [%s](#dcp/%s) @ [%s](#loc/%s)"
+                % (
+                    job.type.name,
+                    job.status.name,
+                    job.dcp.title,
+                    job.dcp.id,
+                    job.dcp.location.name,
+                    job.dcp.location.id,
+                )
+            ),
+        ]
+
+    if job.dcp.movie is not None:
+        header += [
+            ui.inline(
+                [
+                    ui.button(
+                        name="goto_movie",
+                        label="%s >" % job.dcp.movie.title,
+                        value=str(job.dcp.movie.id),
+                    ),
+                ]
+            )
+        ]
+
+    return [ ui.inline(
+                justify="between",
+                items= header)
+    ]
 
 @on("#job/{id:int}")
 async def task_detail_layout(q: Q, id: int):
@@ -34,44 +74,14 @@ async def task_detail_layout(q: Q, id: int):
 
         if job.dcp is not None:
             setup_page(q, "Job Detail %s" % job.dcp.title)
-            header = [
-                ui.text_xl(
-                    "%s %s [%s](#dcp/%s) @ [%s](#loc/%s)"
-                    % (
-                        job.type.name,
-                        job.status.name,
-                        job.dcp.title,
-                        job.dcp.id,
-                        job.dcp.location.name,
-                        job.dcp.location.id,
-                    )
-                ),
-            ]
-
-            if job.dcp.movie is not None:
-                header += [
-                    ui.inline(
-                        [
-                            ui.button(
-                                name="goto_movie",
-                                label="%s >" % job.dcp.movie.title,
-                                value=str(job.dcp.movie.id),
-                            ),
-                        ]
-                    )
-                ]
         else:
             setup_page(q, "Job Detail deleted DCP")
 
         q.page["job_detail_%s" % job.id] = ui.form_card(
             box=ui.box("content", size=0),
-            items=[
-                ui.inline(
-                    justify="between",
-                    items=header,
-                ),
-            ],
+            items= job_header_items(job),
         )
+
         q.page["job_progress_%s" % job.id] = ui.form_card(
             box=ui.box("content", size=0), items=job_progress(job)
         )

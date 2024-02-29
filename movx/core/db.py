@@ -34,6 +34,9 @@ from sqlalchemy.orm import (
     configure_mappers,
 )
 
+from movx.core.agent import JobType
+from movx.core.agent import JobStatus
+
 db_path = Path.home() / ".movx" / "movx.db"
 
 # db_path.unlink()
@@ -42,7 +45,7 @@ db_url = "sqlite:///%s" % db_path.absolute()
 
 Session = None
 
-make_versioned(user_cls=None)
+#make_versioned(user_cls=None)
 
 global_db_write_lock = threading.Lock()
 
@@ -99,13 +102,14 @@ class Base(MappedAsDataclass, DeclarativeBase):
         OR get a particular object if the id parameter is provided
         """
         ret = None
-        if inspect.isclass(self):
-            if id:
-                ret = Session.get(self, id)
+        with Session() as session:
+            if inspect.isclass(self):
+                if id:
+                    ret = session.get(self, id)
+                else:
+                    ret = session.scalars(select(self)).all()
             else:
-                ret = Session.scalars(select(self)).all()
-        else:
-            ret = Session.get(self.__class__, self.id)
+                ret = session.get(self.__class__, self.id)
         return ret
 
     @classmethod
@@ -114,9 +118,10 @@ class Base(MappedAsDataclass, DeclarativeBase):
         get all objects of this same class from the DB
         """
         ret = []
-        ret = Session.scalars(
-            select(cls), execution_options={"prebuffer_rows": True}
-        ).all()
+        with Session() as session:
+            ret = session.scalars(
+                select(cls), execution_options={"prebuffer_rows": True}
+            ).all()
         return ret
 
     @classmethod
@@ -134,9 +139,10 @@ class Base(MappedAsDataclass, DeclarativeBase):
         Filter query on this object class
         """
         ret = []
-        ret = Session.scalars(
-            select(cls).filter(expr), execution_options={"prebuffer_rows": True}
-        )
+        with Session() as session:
+            ret = session.scalars(
+                select(cls).filter(expr), execution_options={"prebuffer_rows": True}
+            )
         return ret
 
     @contextmanager
@@ -144,9 +150,11 @@ class Base(MappedAsDataclass, DeclarativeBase):
         """
         Context manager that get a fresh version of this very object, yield, and commit it.
         """
-        t = Session.query(self.__class__).get(self.id)
-        yield t
-        Session.commit()
+        with Session() as session:
+            t = session.query(self.__class__).get(self.id)
+            yield t
+            session.commit()
+            session.flush()
 
 
 class User(Base):
@@ -229,8 +237,7 @@ class Location(Base):
         """
         Get all DCP's from this location
         """
-        with Session() as session:
-            return session.scalars(select(DCP).where(DCP.location == self)).all()
+        return Session.scalars(select(DCP).where(DCP.location == self)).all()
 
 
 movies_tags = Table(
@@ -352,23 +359,6 @@ class DCP(Base):
             ).all()
 
 
-class JobStatus(enum.Enum):
-    errored = 0
-    created = 1
-    started = 2
-    running = 3
-    finished = 4
-    cancelled = 5
-
-
-class JobType(enum.Enum):
-    test = 0
-    parse = 1
-    probe = 2
-    check = 3
-    copy = 4
-
-
 class Job(Base):
     """
     Represent a task that take time and is related to a DCP, and that has been created by someone
@@ -390,7 +380,7 @@ class Job(Base):
     status: Mapped[JobStatus] = mapped_column(default=JobStatus.created)
 
     description: Mapped[Optional[str]] = mapped_column(default="")
-    progress: Mapped[Optional[int]] = mapped_column(insert_default=0, default=0)
+    progress: Mapped[Optional[int]] = mapped_column(insert_default=-1, default=-1)
     elapsed_time_s: Mapped[Optional[int]] = mapped_column(insert_default=0, default=0)
     created_at: Mapped[Optional[float]] = mapped_column(
         insert_default=time.time(), default=time.time()
@@ -401,12 +391,17 @@ class Job(Base):
     result = mapped_column(JSON, insert_default={}, default={})
 
     def duration(self):
+        start = self.started_at
+        if self.started_at == -1:
+            start = self.created_at
         if self.finished_at > 0:
-            return round(self.finished_at - self.started_at)
+            return round(self.finished_at - start)
         else:
-            return round(time.time() - self.started_at)
+            return round(time.time() - start)
 
     def eta(self):
+        if self.progress == -1:
+            return -1
         prog = round(self.progress, 2)
         if prog >= 1:
             return 0
@@ -427,8 +422,7 @@ engine = create_engine(db_url, max_overflow=30)
 #Session = sessionmaker(bind=engine, expire_on_commit=False)
 Session = scoped_session(
     sessionmaker(
-        autoflush=False,
-        autocommit=False,
+        autoflush=True,
         expire_on_commit=False,
         bind=engine
     )

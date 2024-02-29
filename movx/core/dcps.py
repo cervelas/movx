@@ -9,9 +9,11 @@ from sqlalchemy.orm.session import make_transient
 import clairmeta
 from movx import dotmovx
 from movx.core import check_report_to_dict
+from movx.core.agent import JobType
 
-from movx.core.db import DCP, Job, LocationType, Movie, Session, User, JobType
+from movx.core.db import DCP, Job, LocationType, Movie, Session, User
 from movx.core import jobs, finditem, DEFAULT_CHECK_PROFILE
+from movx.core.agent import JobStatus
 
 clairmeta.logger.set_level(logging.WARNING)
 
@@ -119,24 +121,27 @@ def by_files_parse_report(report):
     return files
 
 
-def start_poll_agent_job(job, dcp, type, timeout=3600, data=None):
+def start_poll_agent_job(job, uri, path, type, timeout=3600, data=None):
     ret = False
     started = time.time()
-    uri = "http://%s/job_start" % dcp.location.uri
-    print(data)
-    r = httpx.post(uri, params={"type": type, "path": dcp.path}, json=data)
+    _uri = "http://%s/job_start" % uri
+    r = httpx.post(_uri, params={"type": type, "path": path}, json=data)
     if r.status_code == 200:
         resp = r.json()
+        
+        uuid = resp.get("uuid")
+        print(uuid)
         finished = False
-        uri = "http://%s/job_status" % dcp.location.uri
+        _uri = "http://%s/job_status" % uri
         while not finished:
             if time.time() - started > timeout:
                 raise Exception("Timeout on job status request")
-            r = httpx.get(uri, params={"path": dcp.path})
+            r = httpx.get(_uri, params={"uuid": uuid})
             if r.status_code == 200:
                 resp = r.json()
+                resp.update({ "status": JobStatus(resp.get("status")), "type":JobType(resp.get("type")) })
                 job.update(progress=resp.get("progress"))
-                if resp.get("status") == "done":
+                if resp.get("status") == JobStatus.finished:
                     ret = resp.get("result", {}).get("report", {})
                     finished = True
             else:
@@ -156,7 +161,7 @@ def parse_job(job, dcp, probe=False, kdm=None, pkey=None):
 
     if dcp.location.type == LocationType.Agent:
         report = start_poll_agent_job(
-            job, dcp, "parse", data={"kdm": kdm, "pkey": pkey}
+            job, dcp.location.uri, dcp.path, "parse", data={"kdm": kdm, "pkey": pkey}
         )
     elif dcp.location.type == LocationType.Local:
         cm_dcp = clairmeta.DCP(dcp.path, kdm=kdm, pkey=pkey)
@@ -174,11 +179,14 @@ def parse_job(job, dcp, probe=False, kdm=None, pkey=None):
 
     return report
 
-
 def parse(dcp):
     """
     Create and run a Probing job
     """
+    for j in dcp.jobs(JobType.parse.name):
+        if j.status == JobStatus.started: 
+            return False
+
     job = Job(type=JobType.parse, dcp=dcp, author=User.get(1))
 
     job.add()
@@ -195,6 +203,10 @@ def probe(dcp, kdm=None, pkey=None):
     """
     Create and run a Probing job
     """
+    for j in dcp.jobs(JobType.probe.name):
+        if not j.finished.is_set(): 
+            return False
+        
     job = Job(type=JobType.probe, dcp=dcp, author=User.get(1))
 
     job.add()
@@ -223,7 +235,7 @@ def check_job(job, dcp, ov_dcp_path=None, profile=None, kdm=None, pkey=None):
     if dcp.location.type == LocationType.Agent:
         report = start_poll_agent_job(
             job,
-            dcp,
+            dcp.location.uri, dcp.path,
             "check",
             data={
                 "ov_dcp_path": ov_dcp_path,
@@ -235,7 +247,8 @@ def check_job(job, dcp, ov_dcp_path=None, profile=None, kdm=None, pkey=None):
     elif dcp.location.type == LocationType.Local:
 
         def check_job_cb(file, current, final, t):
-            job.update(progress=current / final)
+            with job.fresh() as _job:
+                _job.update(progress=current / final)
 
         cm_dcp = clairmeta.DCP(dcp.path, kdm=kdm, pkey=pkey)
         status, check_report = cm_dcp.check(

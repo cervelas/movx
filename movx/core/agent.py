@@ -1,14 +1,19 @@
+import enum
+from http.client import HTTPException
 import os
 import logging
 from pathlib import Path
 import threading
+import time
 import traceback
 import socket
+from dataclasses import dataclass, field
+import uuid
 
 import clairmeta
 
 from starlette.applications import Starlette
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 from movx.core import (
@@ -23,19 +28,37 @@ from movx.gui import get_linux_drives, get_windows_drives
 clairmeta.logger.set_level(logging.WARNING)
 
 
-def get_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.settimeout(0)
-    try:
-        # doesn't even have to be reachable
-        s.connect(("10.254.254.254", 1))
-        IP = s.getsockname()[0]
-    except Exception:
-        IP = "127.0.0.1"
-    finally:
-        s.close()
-    return IP
+class JobType(enum.Enum):
+    test = 0
+    parse = 1
+    probe = 2
+    check = 3
+    copy = 4
+    mockup = 99
 
+
+class JobStatus(enum.Enum):
+    errored = 0
+    created = 1
+    started = 2
+    running = 3
+    finished = 4
+    cancelled = 5
+
+@dataclass
+class AgentJob:
+    path: str
+    type: JobType
+    status: JobStatus = JobStatus.created
+    progress: float = 0
+    result: dict = field(default_factory=lambda: {})
+    created: time = time.time()
+    uuid: str = str(uuid.uuid4())
+
+    def to_dict(self):
+        d = self.__dict__.copy()
+        d.update({ "type": self.type.value, "status": self.status.value })
+        return d
 
 def root_path():
     if os.environ.get("MOVX_AGENT_ROOT_PATH"):
@@ -46,70 +69,75 @@ def root_path():
 
 logger = logging.getLogger("MovX.Agent")
 
-current_jobs = {}
+__jobs = []
 
+def new_job(path, jobtype):
+    global __jobs
+    aj = AgentJob(path, jobtype)
+    aj.uuid = str(uuid.uuid4())
+    __jobs.append(aj)
+    return aj
 
 def index(request):
     return JSONResponse({"root_path": str(root_path().resolve()), "version": version})
 
-
-def parse(path, probe=False, kdm=None, pkey=None):
+def parse(aj, probe=False, kdm=None, pkey=None):
     """
     Parse a DCP
     """
 
-    print("parse starting on %s" % path)
+    print("parse starting on %s" % aj.path)
 
-    current_jobs.update({path: {"status": "created", "progress": 0}})
+
     try:
-        cm_dcp = clairmeta.DCP(path, kdm=kdm, pkey=pkey)
+        cm_dcp = clairmeta.DCP(aj.path, kdm=kdm, pkey=pkey)
         report = cm_dcp.parse(probe=probe)
 
-        current_jobs[path].update(
-            {"status": "done", "result": {"report": report}, "progress": 1}
-        )
+        aj.status = JobStatus.finished
+        aj.progress = 1
+        aj.result = {"report": report}
 
     except Exception as e:
         print(e)
         print(traceback.format_exc())
-        current_jobs[path].update({"status": "error", "Error": traceback.format_exc()})
+        aj.status = JobStatus.errored
+        aj.result = traceback.format_exc()
 
-    print("parse finished on %s" % path)
+    print("parse finished on %s" % aj.path)
 
 
-def check(path, ov_dcp_path=None, profile=None, kdm=None, pkey=None):
+def check(aj, ov_dcp_path=None, profile=None, kdm=None, pkey=None):
     """
     Check a DCP
     """
     report = {}
     status = False
 
-    global current_jobs
-    current_jobs.update({path: {"status": "created", "progress": 0}})
-
     profile = profile or DEFAULT_CHECK_PROFILE
 
+    print("Check starting on %s" % aj.path)
+
     def check_job_cb(file, current, final, t):
-        global current_jobs
-        nonlocal path
-        current_jobs[path].update({"progress": current / final})
+        nonlocal aj
+        aj.progress = current / final
 
     try:
-        cm_dcp = clairmeta.DCP(path, kdm=kdm, pkey=pkey)
+        cm_dcp = clairmeta.DCP(aj.path, kdm=kdm, pkey=pkey)
         status, check_report = cm_dcp.check(
             profile=profile, ov_path=ov_dcp_path, hash_callback=check_job_cb
         )
 
-        result = {"status": status, "report": check_report_to_dict(check_report)}
-
-        current_jobs[path].update({"status": "done", "result": result, "progress": 1})
+        aj.status = JobStatus.finished
+        aj.progress = 1
+        aj.result = {"status": status, "report": check_report_to_dict(check_report)}
 
     except Exception as e:
         print(e)
         print(traceback.format_exc())
-        current_jobs[path].update({"status": "error", "Error": traceback.format_exc()})
+        aj.status = JobStatus.errored
+        aj.result = traceback.format_exc()
 
-    print("parse finished on %s" % path)
+    print("Check finished on %s" % aj.path)
 
 
 def browse(request):
@@ -157,26 +185,32 @@ async def job_start(request):
 
     if path:
         if type == "parse":
+            aj = new_job(path, JobType.parse)
             t = threading.Thread(
                 target=parse,
-                args=(path, False, json.get("kdm_path"), json.get("dkdm_path")),
+                args=(aj, False, json.get("kdm_path"), json.get("dkdm_path")),
             ).start()
+            return JSONResponse(aj.to_dict())
         elif type == "probe":
+            aj = new_job(path, JobType.probe)
             t = threading.Thread(
                 target=parse,
-                args=(path, True, json.get("kdm_path"), json.get("dkdm_path")),
+                args=(aj, True, json.get("kdm_path"), json.get("dkdm_path")),
             ).start()
+            return JSONResponse(aj.to_dict())
         elif type == "check":
+            aj = new_job(path, JobType.check)
             t = threading.Thread(
                 target=check,
                 args=(
-                    path,
+                    aj,
                     json.get("ov_dcp_path"),
                     json.get("profile"),
                     json.get("kdm_path"),
                     json.get("dkdm_path"),
                 ),
             ).start()
+            return JSONResponse(aj.to_dict())
         else:
             return JSONResponse({"Error": "type %s not found" % type})
     else:
@@ -186,12 +220,13 @@ async def job_start(request):
 
 
 def job_status(request):
-    global current_jobs
-    path = request.query_params.get("path")
-    if path:
-        return JSONResponse(current_jobs.get(path))
+    _uuid = request.query_params.get("uuid")
+    global __jobs
+    for j in __jobs:
+        if _uuid == j.uuid:
+            return JSONResponse(j.to_dict())
 
-    return JSONResponse(current_jobs)
+    return Response("Job with UUID %s not Found" % _uuid, 404)
 
 
 def job_cancel(request):
@@ -217,3 +252,18 @@ routes = [
 ]
 
 app = Starlette(debug=False, routes=routes, on_startup=[startup])
+
+
+def get_ip() -> str:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0)
+    IP = ""
+    try:
+        # doesn't even have to be reachable
+        s.connect(("10.254.254.254", 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = "127.0.0.1"
+    finally:
+        s.close()
+    return IP

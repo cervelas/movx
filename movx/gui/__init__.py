@@ -9,6 +9,7 @@ from inspect import signature
 
 from starlette.routing import compile_path
 from h2o_wave import main, ui, Q, expando_to_dict
+import movx
 from movx.core import flatten
 
 from movx.gui import styleguide
@@ -132,6 +133,7 @@ nav = ui.nav_card(
 
 
 def setup_page(q: Q, title=None, layout="default"):
+
     if q.client.nosetup:
         q.client.nosetup = False
         return
@@ -188,6 +190,8 @@ def make_md_table(cols, rows):
 
 
 def convert_size(size_bytes, exact=True):
+    if size_bytes < 0:
+        return "Unknown"
     if size_bytes == 0:
         return "0 Bytes"
     size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")

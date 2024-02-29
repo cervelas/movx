@@ -16,7 +16,7 @@ from movx.gui.cards.job import check_report_items
 
 def add_infos_cards(q, dcp):
     add_dcp_header_card(q, dcp)
-    # dcp_infos_card(q, dcp)
+    #dcp_infos_card(q, dcp)
     add_dcp_tags_card(q, dcp)
     add_dcp_notes_card(q, dcp)
     add_dcp_parse_card(q, dcp)
@@ -65,7 +65,7 @@ def add_dcp_tags_card(q, dcp):
     if dcp.tags:
         dcp_tags = [t.name for t in dcp.tags]
 
-    available_tags = [t.name for t in Tags.get_all() if t.name not in dcp_tags]
+    available_tags = [t.name for t in Tags.get_all()]
 
     q.page.add(
         "dcp_tags",
@@ -106,10 +106,11 @@ def add_dcp_notes_card(q, dcp):
                             multiline=True,
                             value=dcp.notes,
                             width="100%",
-                            height="300px",
+                            height="150px",
                         )
                     ],
                 ),
+                ui.button(name="update_dcp_notes", label="update")
             ],
         ),
     )
@@ -150,6 +151,9 @@ def add_dcp_parse_card(q, dcp):
                         ui.button(
                             name="dcp_parse_action", label="Parse", value=str(dcp.id)
                         ),
+                        ui.button(
+                            name="dcp_mock_action", label="Mock", value=str(dcp.id)
+                        ),
                     ],
                 ),
             ]
@@ -174,6 +178,27 @@ def dcp_files_items(report):
 
     return items
 
+async def show_probe_action_panel(q):
+
+    items = [
+        ui.inline([
+           ui.text('KDM'),
+           ui.file_upload(name='kdm_probe_upload', compact=True)
+        ], justify="end"),
+        ui.inline([
+           ui.text('Private Key'),
+           ui.file_upload(name='pkey_probe_upload', compact=True),
+        ], justify="end"),
+        ui.button(
+            name="probe_action", label="Parse", value=str(q.client.dcp.id)
+        ),
+    ]
+
+    q.page["meta"].side_panel = ui.side_panel(
+        title="Add a local folder",
+        items=items,
+    )
+    await q.page.save()
 
 def add_dcp_probe_card(q, dcp):
     jobs = dcp.jobs(type=JobType.probe)
@@ -194,14 +219,7 @@ def add_dcp_probe_card(q, dcp):
             items=job_items
             + [
                 ui.button(name="dcp_probe_action", label="Probe", value=str(dcp.id)),
-                # ui.inline([
-                #    ui.text('KDM'),
-                #    ui.file_upload(name='kdm_probe_upload', compact=True)
-                # ], justify="end"),
-                # ui.inline([
-                #    ui.text('Private Key'),
-                #    ui.file_upload(name='pkey_probe_upload', compact=True),
-                # ], justify="end"),
+                
             ],
         )
     ] + items

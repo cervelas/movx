@@ -40,7 +40,7 @@ async def show_movie(q: Q, id: int):
             )
         vfs = movie.vfs()
 
-        if len(ovs) > 0:
+        if len(vfs) > 0:
             q.page["vfs_dcps_table"] = ui.form_card(
                 box="content", items=[ui.text_l("VFs"), dcps_table(vfs)]
             )
@@ -63,6 +63,6 @@ async def show_movie(q: Q, id: int):
             box="content", items=[ui.text("Movie %s not found" % id)]
         )
 
-    await debug_card(q)
+    #await debug_card(q)
 
     await q.page.save()
