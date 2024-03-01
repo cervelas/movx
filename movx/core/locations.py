@@ -90,8 +90,8 @@ def __scan(location):
     else:
         raise Exception("Cannot Scan Location %s: Type Unknown" % location.name)
 
-
 def scan_add_dcps(location):
+
     paths = __scan(location)
     dcps = list(DCP.filter(DCP.location.has(id=location.id)).all())
 
@@ -113,6 +113,7 @@ def scan_add_dcps(location):
             dcps.append(dcp)
 
     return dcps
+
 
 def scan_all():
     """

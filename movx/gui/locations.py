@@ -139,17 +139,25 @@ async def scan_location(q: Q):
     loc = Location.get(q.args.scan_location)
 
     if loc:
+        threading.Thread(target=scan_add_dcps, args=(loc,)).start()
         notif(q, "Scan location %s for dcp's..." % loc.name)
         await q.page.save()
-        _dcps = await q.run(scan_add_dcps, loc)
-        notif(q, "Parsing locations")
-        await q.page.save()
-        for dcp in _dcps:
-            with dcp.fresh() as _dcp:
-                dcps.parse(_dcp)
-        notif(q, "%s dcps found in location %s" % (len(_dcps), loc.name))
-        await q.page.save()
 
+@on()
+async def parse_location(q: Q):
+    loc = Location.get(q.args.parse_location)
+
+    if loc:
+        _dcps = loc.dcps()
+        if len(_dcps) > 0:
+            notif(q, "Parse %s location dcp's" % loc.name)
+            await q.page.save()
+            for dcp in _dcps:
+                with dcp.fresh() as _dcp:
+                    dcps.parse(_dcp)
+            await q.page.save()
+        else:
+            await scan_location(loc)
 
 @on()
 async def delete_location(q):

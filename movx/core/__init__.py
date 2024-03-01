@@ -2,9 +2,7 @@ from collections.abc import MutableMapping, MutableSequence
 import sys
 import json
 from pathlib import Path
-import importlib.metadata
 
-version = importlib.metadata.version("movx")
 
 DEFAULT_CHECK_PROFILE = {
     "criticality": {

@@ -8,7 +8,10 @@ from h2o_wave import copy_expando, on, ui
 def locations_list_card(locations):
     commands = [
         ui.command(
-            name="scan_location", label="Fetch dcps", icon="SearchData", value="hide"
+            name="scan_location", label="Fetch dcps", icon="SearchData",
+        ),
+        ui.command(
+            name="parse_location", label="Parse dcps", icon="GenericScan",
         ),
         ui.command(name="delete_location", label="Delete", icon="delete", value="show"),
         ui.command(

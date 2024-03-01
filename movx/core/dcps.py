@@ -125,7 +125,9 @@ def start_poll_agent_job(job, uri, path, type, timeout=3600, data=None):
     ret = False
     started = time.time()
     _uri = "http://%s/job_start" % uri
-    r = httpx.post(_uri, params={"type": type, "path": path}, json=data)
+
+    r = httpx.post(_uri, params={"type": type, "path": path}, json=data, timeout=30.0)
+
     if r.status_code == 200:
         uuid = r.json().get("uuid")
         finished = False
@@ -133,10 +135,9 @@ def start_poll_agent_job(job, uri, path, type, timeout=3600, data=None):
         while not finished:
             if time.time() - started > timeout:
                 raise Exception("Timeout on job status request")
-            r = httpx.get(_uri, params={"uuid": uuid})
+            r = httpx.get(_uri, params={"uuid": uuid}, timeout=30.0)
             if r.status_code == 200:
                 resp = r.json()
-                print(resp)
                 resp.update({ "status": JobStatus(resp.get("status")), "type":JobType(resp.get("type")) })
                 job.update(progress=resp.get("progress"))
                 if resp.get("status") == JobStatus.finished:

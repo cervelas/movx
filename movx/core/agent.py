@@ -232,12 +232,6 @@ def job_status(request):
     return Response("Job with UUID %s not Found" % _uuid, 404)
 
 
-def job_cancel(request):
-    path = request.query_params.get("path")
-    type = request.query_params.get("type")
-    return JSONResponse(current_jobs.get(path))
-
-
 def startup():
     ip = get_ip()
     print("Started Agent @ http://%s:11011" % ip)

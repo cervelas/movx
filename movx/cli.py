@@ -3,6 +3,8 @@ import webbrowser
 import os
 from pathlib import Path
 import click
+import subprocess
+import sys
 
 from movx import start_agent, start_serve
 from movx.app import start_app
@@ -99,6 +101,13 @@ def clear():
 def cancel():
     pass  # jobs.cancel()
 
+
+@main.command()
+def update():
+    cwd = Path(__file__).parent
+    print("update launched")
+    subprocess.Popen([sys.executable, "selfupdate.py"], cwd=cwd)
+    exit(0)
 
 def print_tasks_cli(tasks):
     for t in tasks:
