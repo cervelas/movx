@@ -15,13 +15,12 @@ import clairmeta
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
-
+from movx import version
 from movx.core import (
     is_linux,
     is_win,
     DEFAULT_CHECK_PROFILE,
     check_report_to_dict,
-    version,
 )
 from movx.gui import get_linux_drives, get_windows_drives
 

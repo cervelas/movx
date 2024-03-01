@@ -5,7 +5,7 @@ import socket
 
 import httpx
 from sqlalchemy import delete as _delete, and_
-from movx.core import version
+from movx import version
 from movx.core.db import Location, DCP, LocationType, Session
 
 

@@ -32,12 +32,12 @@ async def serve(q: Q):
         if len(q.client.__loc_hash) == 0:
             #await dcps.overview_items(q)
             # await show_error(q, error="homepage")
-            await dcps.dcps_list(q)
+            await dcps.dcps_list(q, md=True)
 
         elif not await autoroute(q, False):
             # setup_page(q, "Error")
             # await show_error(q, "Autoroute Fail")
-            await dcps.dcps_list(q)
+            await dcps.dcps_list(q, md=True)
 
         await q.page.save()
 

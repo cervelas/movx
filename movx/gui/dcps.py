@@ -3,15 +3,16 @@ from movx import core
 from movx.gui import convert_size, setup_page
 from movx.gui.cards.dcps import dcps_table
 from movx.core.db import DCP, Location
-
+from movx.gui.dcp import show_dcp
 """
 ffmpeg -ss 00:04:01 -i .\Persona_FTR-1_F-177_XX-EN_20_2K_SEED_20220531_JIN_IOP_OV\Persona_FTR-1_F-177_XX-EN_20_2K_SEED_20220531_JIN_IOP_OV_b44dc5eb-52ad-44_j2c.mxf -frames:v 1 -y  output.png
 """
 
-@on("dcp_list")
-async def on_row_clicked(q: Q):
-   q.page["meta"] = ui.meta_card(box="", redirect="#dcp/" + q.args.dcp_list[0])
-   await q.page.save()
+@on()
+async def dcp_list(q: Q):
+   await show_dcp(q, q.args.dcp_list[0])
+   #q.page["meta"] = ui.meta_card(redirect="#dcp/" + q.args.dcp_list[0])
+   #await q.page.save()
 
 # @on()
 # async def dcp_parse_action(q):
@@ -25,7 +26,7 @@ async def on_row_clicked(q: Q):
 
 
 @on("#dcps")
-async def dcps_list(q: Q):
+async def dcps_list(q: Q, md=False):
     setup_page(q, "DCP's")
 
     q.page["full_dcp_list"] = ui.form_card(
@@ -37,8 +38,8 @@ async def dcps_list(q: Q):
                     ui.text_xl("All DCPs"),
                     ui.inline(
                         items=[
-                            ui.button(name="refresh_dcps", label="", icon="refresh"),
-                            ui.button(name="clear_all", label="clear_all"),
+                            #ui.button(name="refresh_dcps", label="", icon="refresh"),
+                            #ui.button(name="clear_all", label="clear_all"),
                             # ui.button(name='show_flat_list', label='Flat', icon="BulletedTreeList"),
                             # ui.button(name='show_detail_list', label='Details', icon="LineStyle"),
                             # ui.button(name='show_manage_list', label='Management', icon="WaitlistConfirm"),
@@ -48,7 +49,7 @@ async def dcps_list(q: Q):
                     ),
                 ],
             ),
-            dcps_table(DCP.get_all()),
+            dcps_table(DCP.get_all(), md),
         ],
     )
 

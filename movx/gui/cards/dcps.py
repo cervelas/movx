@@ -4,7 +4,7 @@ from movx.core.db import Tags
 from movx.gui import convert_size
 
 
-def dcps_table(dcps):
+def dcps_table(dcps, md=False):
     commands = [
         ui.command(
             name="dcp_check_action", label="Check", value=""
@@ -30,7 +30,7 @@ def dcps_table(dcps):
             sortable=True,
             min_width="500px",
             link=True,
-            #cell_type=ui.markdown_table_cell_type(target=""),
+            cell_type=ui.markdown_table_cell_type(target="") if md else None,
         ),
         ui.table_column(
             name="Movie",
@@ -80,7 +80,7 @@ def dcps_table(dcps):
     return ui.table(
         name="dcp_list",
         columns=columns,
-        rows=gen_dcps_rows(dcps),
+        rows=gen_dcps_rows(dcps, md),
         groupable=True,
         multiple=False,
         downloadable=True,
@@ -89,7 +89,7 @@ def dcps_table(dcps):
     )
 
 
-def gen_dcps_rows(dcps):
+def gen_dcps_rows(dcps, md=False):
     rows = []
 
     for dcp in dcps:
@@ -113,8 +113,8 @@ def gen_dcps_rows(dcps):
 
         cells = [
             # "",
-            #"[%s](#dcp/%s)" % (dcp.title, dcp.id),
-            dcp.title,
+            #,
+            "[%s](#dcp/%s)" % (dcp.title, dcp.id) if md else dcp.title,
             mov_lnk,
             loc_lnk,
             str(dcp.package_type),
