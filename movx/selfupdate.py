@@ -14,7 +14,7 @@ def update():
     subprocess.call([sys.executable, "-m", "pip", "install", "-e", "."], cwd=cwd, shell=False)
     print("restarting service")
     
-    subprocess.call(["service", "movx", "restart"], cwd=cwd, shell=False)
+    subprocess.call(["systemctl", "--user", "restart", "movx.service"], cwd=cwd, shell=False)
     exit(0)
 
 if __name__ == "__main__":
